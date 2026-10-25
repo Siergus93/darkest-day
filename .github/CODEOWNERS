@@ -1,0 +1,8 @@
+# Default reviewers are the repository owner.
+# Protected-path changes require the owner because they can weaken a gate.
+* @Siergus
+
+/scripts/ci/ @Siergus
+/.github/ @Siergus
+/adapters/ @Siergus
+/factory.config.json @Siergus

@@ -1,0 +1,322 @@
+{
+  "schemaVersion": 1,
+  "factoryVersion": "0.2.0",
+  "owner": "Siergus",
+  "activeSlice": "work/0001-enforce-phase-0",
+  "lanes": {
+    "fast": {
+      "trigger": "every change",
+      "budgetMinutes": 10,
+      "gates": ["G0", "G1", "G4a", "G4b", "G4c", "G4d", "G4e", "G4f", "G5a"]
+    },
+    "deep": {
+      "trigger": "before merge or nightly",
+      "budgetMinutes": 60,
+      "gates": ["G5b", "G5c", "G5d", "G5e", "G5f", "G5g", "G5h"]
+    },
+    "release": {
+      "trigger": "before production",
+      "budgetMinutes": 120,
+      "gates": ["G6a", "G6b", "G6c", "G6d", "G6e", "G7a", "G7b", "G7c"]
+    }
+  },
+  "tiers": {
+    "T0": {
+      "name": "Docs, comments, formatting, test-only changes",
+      "ceremony": "Fast gates"
+    },
+    "T1": {
+      "name": "Local behavior, reversible, no contract or data change",
+      "ceremony": "Standard gates"
+    },
+    "T2": {
+      "name": "Contracts, schema, auth, shared components",
+      "ceremony": "All gates, staged release"
+    },
+    "T3": {
+      "name": "Data deletion, money, PII, security model, breaking public API, infrastructure",
+      "ceremony": "All gates, human sign-off, rollback rehearsal"
+    }
+  },
+  "protectedPaths": [
+    {
+      "pattern": "factory.config.json",
+      "escalateTo": "T2",
+      "owner": "Siergus"
+    },
+    {
+      "pattern": "scripts/ci/**",
+      "escalateTo": "T2",
+      "owner": "Siergus"
+    },
+    {
+      "pattern": ".github/workflows/**",
+      "escalateTo": "T2",
+      "owner": "Siergus"
+    },
+    {
+      "pattern": ".github/CODEOWNERS",
+      "escalateTo": "T2",
+      "owner": "Siergus"
+    },
+    {
+      "pattern": "adapters/**",
+      "escalateTo": "T2",
+      "owner": "Siergus"
+    }
+  ],
+  "gates": [
+    {
+      "id": "G0",
+      "tier": "T1",
+      "class": "R+H",
+      "ports": ["docs.link"],
+      "status": "manual",
+      "smokeTested": false,
+      "notes": "A1 linked from A4; link check is automated, content judgment is human."
+    },
+    {
+      "id": "G1",
+      "tier": "T1",
+      "class": "R",
+      "ports": ["docs.link"],
+      "status": "manual",
+      "smokeTested": false,
+      "notes": "A2 acceptance-criterion table is reviewed; no AC schema check yet."
+    },
+    {
+      "id": "G2",
+      "tier": "T2",
+      "class": "R+H",
+      "ports": ["docs.link"],
+      "status": "manual",
+      "smokeTested": false,
+      "notes": "Design sections and ADR review are human."
+    },
+    {
+      "id": "G3",
+      "tier": "T1",
+      "class": "A",
+      "ports": ["vcs.diff"],
+      "status": "partial",
+      "smokeTested": true,
+      "notes": "Blast radius and tier escalation are checked; slice-plan quality is review."
+    },
+    {
+      "id": "G4a",
+      "tier": "T0",
+      "class": "M",
+      "ports": ["build.clean"],
+      "status": "wired",
+      "smokeTested": true,
+      "notes": "npm ci plus tsc emit. Observed failing on an injected type error (TS2322 at src/tiers.ts(147,7), exit 1)."
+    },
+    {
+      "id": "G4b",
+      "tier": "T0",
+      "class": "M",
+      "ports": ["format.check", "lint.check", "type.check", "sast"],
+      "status": "partial",
+      "smokeTested": true,
+      "notes": "type.check is wired and was observed failing (TS2322); format, lint, and SAST are adapter exceptions."
+    },
+    {
+      "id": "G4c",
+      "tier": "T0",
+      "class": "M",
+      "ports": ["test.isolated"],
+      "status": "wired",
+      "smokeTested": true,
+      "notes": "node --test, no external dependencies. Observed failing on a wrong assertion (29 passed, 1 failed, exit 1)."
+    },
+    {
+      "id": "G4d",
+      "tier": "T0",
+      "class": "M",
+      "ports": ["secrets.scan"],
+      "status": "wired",
+      "smokeTested": true,
+      "notes": "Repository-owned ruleset; working tree only until the history scan lands. Observed failing on a fake AWS key without printing the value."
+    },
+    {
+      "id": "G4e",
+      "tier": "T1",
+      "class": "M+R",
+      "ports": ["deps.inventory", "deps.vuln"],
+      "status": "partial",
+      "smokeTested": false,
+      "notes": "Lockfile inventory is wired; npm audit is advisory until observed failing."
+    },
+    {
+      "id": "G4f",
+      "tier": "T0",
+      "class": "M",
+      "ports": ["vcs.diff"],
+      "status": "wired",
+      "smokeTested": true,
+      "notes": "Changed paths compared to the declared radius in A4. Observed failing on an undeclared path and on a T1 plan touching a protected path."
+    },
+    {
+      "id": "G5a",
+      "tier": "T1",
+      "class": "M+R",
+      "ports": ["test.isolated", "test.boundary"],
+      "status": "manual",
+      "smokeTested": false,
+      "notes": "Tests exist; AC-to-result mapping is recorded in A5 by the verifier."
+    },
+    {
+      "id": "G5b",
+      "tier": "T2",
+      "class": "M",
+      "ports": ["test.contract"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No deployed interfaces yet."
+    },
+    {
+      "id": "G5c",
+      "tier": "T2",
+      "class": "M",
+      "ports": ["test.boundary"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No authorization surface yet."
+    },
+    {
+      "id": "G5d",
+      "tier": "T2",
+      "class": "M+R",
+      "ports": ["db.compat"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No schema or data store yet."
+    },
+    {
+      "id": "G5e",
+      "tier": "T2",
+      "class": "M",
+      "ports": ["test.boundary"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No external boundaries yet."
+    },
+    {
+      "id": "G5f",
+      "tier": "T2",
+      "class": "M+R",
+      "ports": ["perf.measure"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No hot path yet; the fast lane has a wall-clock budget (enforced as G4f-adjacent timing)."
+    },
+    {
+      "id": "G5g",
+      "tier": "T1",
+      "class": "A",
+      "ports": ["test.isolated"],
+      "status": "manual",
+      "smokeTested": true,
+      "notes": "Break-and-restore recorded in the adapter smoke test; no mutation tool. Type and assertion breaks were both caught."
+    },
+    {
+      "id": "G5h",
+      "tier": "T1",
+      "class": "A",
+      "ports": ["test.journey"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No journey tier yet."
+    },
+    {
+      "id": "G6a",
+      "tier": "T2",
+      "class": "M",
+      "ports": ["artifact.immutable"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No deployable artifact yet."
+    },
+    {
+      "id": "G6b",
+      "tier": "T2",
+      "class": "M",
+      "ports": ["config.validate"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No runtime configuration yet."
+    },
+    {
+      "id": "G6c",
+      "tier": "T2",
+      "class": "R+H",
+      "ports": ["rollback"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No deployment yet."
+    },
+    {
+      "id": "G6d",
+      "tier": "T2",
+      "class": "R",
+      "ports": ["flag.control"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No runtime behavior to flag yet."
+    },
+    {
+      "id": "G6e",
+      "tier": "T2",
+      "class": "R",
+      "ports": ["observe.metrics", "alert.route"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No production traffic yet."
+    },
+    {
+      "id": "G7a",
+      "tier": "T2",
+      "class": "R",
+      "ports": ["alert.route"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No alerts yet."
+    },
+    {
+      "id": "G7b",
+      "tier": "T2",
+      "class": "R",
+      "ports": ["observe.metrics"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No SLO yet."
+    },
+    {
+      "id": "G7c",
+      "tier": "T3",
+      "class": "H",
+      "ports": ["docs.link"],
+      "status": "n/a",
+      "smokeTested": false,
+      "notes": "No production capability yet."
+    },
+    {
+      "id": "G8a",
+      "tier": "T1",
+      "class": "R",
+      "ports": ["docs.link"],
+      "status": "manual",
+      "smokeTested": false,
+      "notes": "A8 is due at the declared horizon; not written at merge time."
+    },
+    {
+      "id": "G8b",
+      "tier": "T1",
+      "class": "R",
+      "ports": ["docs.link"],
+      "status": "manual",
+      "smokeTested": false,
+      "notes": "Rework attribution is part of A8."
+    }
+  ]
+}

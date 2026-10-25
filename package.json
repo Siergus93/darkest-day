@@ -1,0 +1,20 @@
+{
+  "name": "darkest-day-factory",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Phase 0 gate scaffolding for the Darkest Day software factory",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "pretest": "npm run build",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "fast": "node scripts/ci/fast.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
