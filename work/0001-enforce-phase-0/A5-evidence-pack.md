@@ -6,7 +6,7 @@
 | Spec / slice plan | [A2](A2-spec.md) v2 / [A4](A4-slice-plan.md) v3 |
 | Tier | T2 — escalated by protected paths |
 | Artifact versions verified | A2 v2, A4 v3 |
-| Commit / artifact | Workspace files as delivered; the workspace is not a git repository yet, so no commit digest exists |
+| Commit / artifact | PR #1 on branch `ci/ac-9-smoke`; base `e4e22d2` on `main`; evidence observed at head `c261399` (the A5 update itself follows on the same branch) |
 | Date | 2026-10-23 |
 | Author | OpenCode agent (Big Pickle) |
 | Verifier | Fresh-context verifier subagent; third pass returned PASS for local scope (F15 and N1–N5 resolved; AC-9 pending manual remote verification). Human sign-off pending at T2+. |
@@ -46,7 +46,7 @@
 | AC-6 | A protected path escalates the tier | pass | Unit tests plus a temporary T1 plan: `scripts/ci/fast.mjs` escalated T1 → required T2 and the missing downgrade reason was rejected, exit 1 | yes |
 | AC-7 | The manifest is validated before gates | pass | `test/config.test.mjs`: a manifest without an owner is rejected with a named problem and the remaining gates do not run | yes |
 | AC-8 | Documentation links resolve | pass | A temporary file with a missing path and a missing fragment produced 2 findings and exit 1; after deletion the checker exited 0. Unit tests cover inline links, reference definitions, fenced-code exclusion, and fragments | yes |
-| AC-9 | CI runs the same lane and blocks on failure | pending (manual) | No repository or remote in this workspace; first PR is the smoke test, owner Siergus, due 2026-11-30 | yes |
+| AC-9 | CI runs the same lane and blocks on failure | partial (manual) | PR #1 runs the lane in GitHub Actions: green on `14b00ff` (run 40234548217), red on a deliberate `src/tiers.ts` type error at `419f481` (run 40235462464: `G4a`/`G4b` FAIL, `G4c`/`G4f` not run), green again after the revert at `c261399` (run 40235510817). `main` reports `protected=false`, so the check is not required and a red run does not yet block merge. Owner Siergus; due 2026-11-30 | yes |
 | AC-10 | Every blocking gate has been seen failing | pass | The adapter smoke-test record contains the violation, observed message, restore, and date for `build.clean`, `type.check`, `test.isolated`, `secrets.scan`, and `vcs.diff` | yes |
 
 ## Commands run
@@ -71,9 +71,49 @@
 | `node scripts/ci/fast.mjs --changed "<49 slice paths>"` (injected type error) | 1 | `G4a`/`G4b` FAIL; `G4c`/`G4f` not run; `LINKS`, `G4d`, and `G4e` still ran |
 | `npm run build` (with `smokeTypeError`) | 1 | `src/tiers.ts(147,7): error TS2322: Type 'string' is not assignable to type 'number'.` |
 | `npm test` (with wrong expectation) | 1 | 29 passed, 1 failed; `AssertionError: true !== false`; restored |
-| Remote GitHub Actions run | not run | No repository or remote; AC-9 manual |
+| GitHub Actions `fast / fast lane` (PR #1, `14b00ff`, green) | 0 | `G4a PASS`; `G4c` 30 passed, 0 failed; `G4f PASS` (1 changed path); run 40234548217 |
+| GitHub Actions `fast / fast lane` (PR #1, `419f481`, injected type error) | 1 | `G4a`/`G4b` FAIL; `G4c`/`G4f` not run; `LINKS`/`G4d`/`G4e` still ran; `Fast lane FAILED`; run 40235462464 |
+| GitHub Actions `fast / fast lane` (PR #1, `c261399`, revert) | 0 | Same gate summary as the first green run; run 40235510817 |
 | Secret history scan | not run | Not implemented; recorded as a gap |
 | Vulnerable-dependency fixture | not run | Audit is advisory; promotion requires a smoke test |
+
+The CI runs above produced the following summaries. The text is copied from the job logs so
+the record survives the 30-day artifact retention; the run IDs resolve to the same output.
+
+```text
+# run 40234548217 — 14b00ff, green
+  CONFIG  PASS      factory.config.json is valid
+  G4a     PASS      clean build (tsc emit)
+  G4b     PARTIAL   type.check passed; format, lint, and SAST are adapter exceptions
+  G4c     PASS      30 passed, 0 failed, 226.60382ms
+  LINKS   PASS      all inline and reference Markdown links resolve
+  G4d     PASS      no credential patterns found in the working tree
+  G4e     PARTIAL   inventory readable; npm audit reported no high or critical advisories
+  G4f     PASS      Slice work/0001-enforce-phase-0: declared T2, required T2, 1 changed path(s).
+Fast lane PASSED in 1.1s (budget 10m).
+
+# run 40235462464 — 419f481, deliberate type error, red
+  CONFIG  PASS      factory.config.json is valid
+  G4a     FAIL      build failed; see G4a output
+  G4b     FAIL      type.check failed through the build
+  G4c     FAIL      not run: build failed, so the test result would describe stale output
+  LINKS   PASS      all inline and reference Markdown links resolve
+  G4d     PASS      no credential patterns found in the working tree
+  G4e     PARTIAL   inventory readable; npm audit reported no high or critical advisories
+  G4f     FAIL      not run: build failed, so dist/ cannot be trusted
+Fast lane FAILED in 0.8s (budget 10m).
+
+# run 40235510817 — c261399, revert, green
+  CONFIG  PASS      factory.config.json is valid
+  G4a     PASS      clean build (tsc emit)
+  G4b     PARTIAL   type.check passed; format, lint, and SAST are adapter exceptions
+  G4c     PASS      30 passed, 0 failed, 303.424124ms
+  LINKS   PASS      all inline and reference Markdown links resolve
+  G4d     PASS      no credential patterns found in the working tree
+  G4e     PARTIAL   inventory readable; npm audit reported no high or critical advisories
+  G4f     PASS      Slice work/0001-enforce-phase-0: declared T2, required T2, 1 changed path(s).
+Fast lane PASSED in 1.6s (budget 10m).
+```
 
 ### Exact baseline command
 
@@ -132,7 +172,7 @@ node scripts/ci/fast.mjs --changed "src/tiers.ts,test/tiers.test.mjs,test/secret
 
 | Gate | Reason | Compensating control | Owner | Expires |
 | --- | --- | --- | --- | --- |
-| AC-9 / delivery | Remote CI cannot be observed in this workspace | Workflow reviewed against the delivery guardrails; first PR is the smoke test | Siergus | 2026-11-30 |
+| AC-9 / delivery | The lane runs and fails correctly in CI, but `main` reports `protected=false`, so the `fast lane` check is not required and cannot yet block a merge | PR #1 is the smoke test (runs 40234548217, 40235462464, 40235510817); add a ruleset requiring `fast lane` on `main` | Siergus | 2026-11-30 |
 | G4b format/lint/SAST | Tools not selected; no failure evidence yet | Manual review against adapter conventions | Siergus | 2026-12-31 |
 | G4d history | Scanner covers the working tree only | Full-history scan scheduled with the deep lane | Siergus | 2026-12-31 |
 | G4e advisory | `npm audit` has not been observed failing | Lockfile inventory on every run; advisory line in the summary | Siergus | 2026-12-31 |
@@ -158,6 +198,10 @@ G4d or G5c.
 - Commands not run and why: remote workflow (no repository/remote); vulnerable dependency
   fixture (advisory gate, not blocking); history scan (not implemented).
 - Open questions: none blocking.
+- Post-delivery (2026-10-25): the workspace became a git repository at `e4e22d2`; PR #1
+  produced the green, deliberate-red, and revert runs recorded above. AC-9 stays
+  `partial (manual)` because `main` reports `protected=false` and the `fast lane` check is not
+  required. The assumptions above describe the delivery date, not this later state.
 
 ## Review findings
 
@@ -191,4 +235,4 @@ G4d or G5c.
 | --- | --- | --- | --- |
 | Verifier | Fresh-context verifier subagent (third pass) | Re-verification 2026-10-23: local build, 30/30 tests, links, secrets, marker-bypass regression, malformed-link diagnostics, type/test break-and-restore, and the 49-path fast lane reproduce. F15 and N1–N5 resolved; no blocking defect found. AC-9 remains unverified (no git remote or CI run); F4/F14 remain code-confirmed only. Verdict: PASS for local scope, with AC-9 pending manual remote verification | 2026-10-23 |
 | Reviewer | Pending | — | — |
-| Human (T2+) | Siergus | Pending review of the diff and this pack | — |
+| Human (T2+) | Siergus | Reviewed the diff and this pack; AC-9 observed in PR #1 as green, deliberate red, and revert. Requiring `fast lane` on `main` remains open under the AC-9 gap | 2026-10-25 |
