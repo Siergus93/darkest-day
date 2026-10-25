@@ -6,7 +6,7 @@ records live in [`../docs/decisions/`](../docs/decisions/) because they outlive 
 
 | Slice | Title | Tier | State | Evidence |
 | --- | --- | --- | --- | --- |
-| [0001](0001-enforce-phase-0/) | Enforce the Phase 0 gates | T2 | S5 — verification | [A5](0001-enforce-phase-0/A5-evidence-pack.md) |
+| [0001](0001-enforce-phase-0/) | Enforce the Phase 0 gates | T2 | S6 — release | [A5](0001-enforce-phase-0/A5-evidence-pack.md) |
 
 Update the row when a gate passes, not when work starts. The convention is defined in
 [`../docs/software-factory/08-artifacts.md`](../docs/software-factory/08-artifacts.md).

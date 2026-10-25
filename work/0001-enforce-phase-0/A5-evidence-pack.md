@@ -46,7 +46,7 @@
 | AC-6 | A protected path escalates the tier | pass | Unit tests plus a temporary T1 plan: `scripts/ci/fast.mjs` escalated T1 → required T2 and the missing downgrade reason was rejected, exit 1 | yes |
 | AC-7 | The manifest is validated before gates | pass | `test/config.test.mjs`: a manifest without an owner is rejected with a named problem and the remaining gates do not run | yes |
 | AC-8 | Documentation links resolve | pass | A temporary file with a missing path and a missing fragment produced 2 findings and exit 1; after deletion the checker exited 0. Unit tests cover inline links, reference definitions, fenced-code exclusion, and fragments | yes |
-| AC-9 | CI runs the same lane and blocks on failure | partial (manual) | PR #1 runs the lane in GitHub Actions: green on `14b00ff` (run 40234548217), red on a deliberate `src/tiers.ts` type error at `419f481` (run 40235462464: `G4a`/`G4b` FAIL, `G4c`/`G4f` not run), green again after the revert at `c261399` (run 40235510817). `main` reports `protected=false`, so the check is not required and a red run does not yet block merge. Owner Siergus; due 2026-11-30 | yes |
+| AC-9 | CI runs the same lane and blocks on failure | pass | PR #1 ran the lane in GitHub Actions: green on `14b00ff` (run 40234548217), red on a deliberate `src/tiers.ts` type error at `419f481` (run 40235462464: `G4a`/`G4b` FAIL, `G4c`/`G4f` not run), green again after the revert at `c261399` (run 40235510817), and green on the evidence commit `cd63fb8` (run 40236269540). `main` is public and protected, and the active ruleset requires the `fast lane` status check, so a red run blocks merge. | yes |
 | AC-10 | Every blocking gate has been seen failing | pass | The adapter smoke-test record contains the violation, observed message, restore, and date for `build.clean`, `type.check`, `test.isolated`, `secrets.scan`, and `vcs.diff` | yes |
 
 ## Commands run
@@ -172,7 +172,6 @@ node scripts/ci/fast.mjs --changed "src/tiers.ts,test/tiers.test.mjs,test/secret
 
 | Gate | Reason | Compensating control | Owner | Expires |
 | --- | --- | --- | --- | --- |
-| AC-9 / delivery | The lane runs and fails correctly in CI, but `main` reports `protected=false`, so the `fast lane` check is not required and cannot yet block a merge | PR #1 is the smoke test (runs 40234548217, 40235462464, 40235510817); add a ruleset requiring `fast lane` on `main` | Siergus | 2026-11-30 |
 | G4b format/lint/SAST | Tools not selected; no failure evidence yet | Manual review against adapter conventions | Siergus | 2026-12-31 |
 | G4d history | Scanner covers the working tree only | Full-history scan scheduled with the deep lane | Siergus | 2026-12-31 |
 | G4e advisory | `npm audit` has not been observed failing | Lockfile inventory on every run; advisory line in the summary | Siergus | 2026-12-31 |
@@ -199,9 +198,9 @@ G4d or G5c.
   fixture (advisory gate, not blocking); history scan (not implemented).
 - Open questions: none blocking.
 - Post-delivery (2026-10-25): the workspace became a git repository at `e4e22d2`; PR #1
-  produced the green, deliberate-red, and revert runs recorded above. AC-9 stays
-  `partial (manual)` because `main` reports `protected=false` and the `fast lane` check is not
-  required. The assumptions above describe the delivery date, not this later state.
+  produced the green, deliberate-red, and revert runs recorded above. The repository is public
+  and `main` is protected by a ruleset requiring the `fast lane` check, so AC-9 passes. The
+  assumptions above describe the delivery date, not this later state.
 
 ## Review findings
 
@@ -235,4 +234,4 @@ G4d or G5c.
 | --- | --- | --- | --- |
 | Verifier | Fresh-context verifier subagent (third pass) | Re-verification 2026-10-23: local build, 30/30 tests, links, secrets, marker-bypass regression, malformed-link diagnostics, type/test break-and-restore, and the 49-path fast lane reproduce. F15 and N1–N5 resolved; no blocking defect found. AC-9 remains unverified (no git remote or CI run); F4/F14 remain code-confirmed only. Verdict: PASS for local scope, with AC-9 pending manual remote verification | 2026-10-23 |
 | Reviewer | Pending | — | — |
-| Human (T2+) | Siergus | Reviewed the diff and this pack; AC-9 observed in PR #1 as green, deliberate red, and revert. Requiring `fast lane` on `main` remains open under the AC-9 gap | 2026-10-25 |
+| Human (T2+) | Siergus | Reviewed the diff and this pack; AC-9 observed in PR #1 as green, deliberate red, and revert, and `main` requires the `fast lane` check | 2026-10-25 |
