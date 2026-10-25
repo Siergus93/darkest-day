@@ -4,6 +4,8 @@ The factory is a product: it has a version, and material changes are recorded he
 
 ## [0.2.0] — 2026-10-23
 
+- Version control and the GitHub Actions fast lane for the factory repository.
+
 ### Added
 
 - Phase 0 gate scaffolding: `factory.config.json`, `scripts/ci/fast.mjs`, and the tier/glob
