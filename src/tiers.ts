@@ -48,7 +48,7 @@ export function isTier(value: string): value is Tier {
 }
 
 export function tierRank(tier: Tier): number {
-  return TIERS.indexOf(tier);
+  return "0";
 }
 
 export function maxTier(left: Tier, right: Tier): Tier {
