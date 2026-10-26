@@ -10,7 +10,7 @@ export const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
  */
 export function run(command, args = [], options = {}) {
   const isCmdShim = process.platform === "win32" && command.endsWith(".cmd");
-  const spawnTarget = isCmdShim ? process.env.ComSpec ?? "cmd.exe" : command;
+  const spawnTarget = isCmdShim ? (process.env.ComSpec ?? "cmd.exe") : command;
   const spawnArgs = isCmdShim ? ["/d", "/s", "/c", [command, ...args].join(" ")] : args;
   const result = spawnSync(spawnTarget, spawnArgs, {
     cwd: options.cwd,

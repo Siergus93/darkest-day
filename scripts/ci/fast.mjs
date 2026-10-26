@@ -1,14 +1,18 @@
 #!/usr/bin/env node
-import { loadConfig, repoRoot } from "./lib/config.mjs";
-import { runNpm } from "./lib/run.mjs";
-import { formatFinding, scanSecrets } from "./lib/secrets.mjs";
-import { checkLinks } from "./lib/links.mjs";
 import {
   changeSetNote,
   checkBlastRadius,
   formatBlastRadius,
   gitChangedPaths,
 } from "./lib/blast-radius.mjs";
+import { loadConfig, repoRoot } from "./lib/config.mjs";
+import { trimEngineOutput } from "./lib/engines.mjs";
+import { checkFormatting, checkLint } from "./lib/format-lint.mjs";
+import { checkLinks } from "./lib/links.mjs";
+import { runNpm } from "./lib/run.mjs";
+import { scanSast } from "./lib/sast.mjs";
+import { formatFinding, scanSecrets } from "./lib/secrets.mjs";
+import { formatHistoryFinding, scanHistory } from "./lib/secrets-history.mjs";
 
 const results = [];
 const startedAt = performance.now();
@@ -38,7 +42,9 @@ function parseArguments(argv) {
       index += 1;
     } else if (argument === "--base") {
       if (index + 1 >= argv.length) {
-        throw new Error(`--base requires a git ref; a valueless --base is a usage error, not a silent no-base run.`);
+        throw new Error(
+          `--base requires a git ref; a valueless --base is a usage error, not a silent no-base run.`,
+        );
       }
       options.base = argv[index + 1];
       index += 1;
@@ -82,17 +88,74 @@ const slice = options.slice ?? config?.activeSlice;
 const budgetMinutes = config?.lanes?.fast?.budgetMinutes ?? 10;
 
 if (config !== undefined) {
-  console.log(`Darkest Day fast lane — ${slice ?? "no active slice"} (lane budget ${budgetMinutes}m)`);
+  console.log(
+    `Darkest Day fast lane — ${slice ?? "no active slice"} (lane budget ${budgetMinutes}m)`,
+  );
 
   const build = runNpm(["run", "build"]);
   if (build.status === 0) {
     record("G4a", "PASS", "clean build (tsc emit)");
-    record("G4b", "PARTIAL", "type.check passed; format, lint, and SAST are adapter exceptions");
   } else {
     record("G4a", "FAIL", "build failed; see G4a output");
     record("G4b", "FAIL", "type.check failed through the build");
+    record("FORMAT", "FAIL", "not run: build failed, so the result would describe stale output");
+    record("LINT", "FAIL", "not run: build failed, so the result would describe stale output");
+    record("SAST", "FAIL", "not run: build failed, so the result would describe stale output");
   }
   printBlock("G4a build.clean", build.output);
+
+  let formatOk = false;
+  let lintOk = false;
+  let sastOk = false;
+  if (build.status === 0) {
+    const formatResult = checkFormatting();
+    formatOk = formatResult.ok;
+    record(
+      "FORMAT",
+      formatResult.ok ? "PASS" : "FAIL",
+      "every file matches the Biome formatting rules",
+    );
+    if (!formatResult.ok) {
+      console.log(formatResult.detail);
+      printBlock("FORMAT biome format", formatResult.detail);
+    }
+
+    const lintResult = checkLint();
+    lintOk = lintResult.ok;
+    record("LINT", lintResult.ok ? "PASS" : "FAIL", "no lint rule violations");
+    if (!lintResult.ok) {
+      console.log(lintResult.detail);
+    }
+
+    try {
+      const sastResult = await scanSast(repoRoot);
+      sastOk = sastResult.errors.length === 0;
+      record(
+        "SAST",
+        sastOk ? "PASS" : "FAIL",
+        `security rule pack: ${sastResult.errors.length} violation(s), ${sastResult.warnings.length} warning(s)`,
+      );
+      for (const row of sastResult.warnings) {
+        console.log(`  ${row}`);
+      }
+      if (!sastOk) {
+        for (const row of sastResult.errors) {
+          console.log(`  ${row}`);
+        }
+        console.log("The rule pack is eslint.config.mjs; narrow it only with a recorded reason.");
+      }
+    } catch (error) {
+      record("SAST", "FAIL", `sast crashed: ${error.message}`);
+      console.error(error.message);
+    }
+
+    const gatePassed = formatOk && lintOk && sastOk;
+    record(
+      "G4b",
+      gatePassed ? "PASS" : "FAIL",
+      gatePassed ? "type.check passed; format, lint, and SAST clean" : "see FORMAT/LINT/SAST rows",
+    );
+  }
 
   if (build.status === 0) {
     const tests = runNpm(["test"]);
@@ -136,16 +199,40 @@ if (config !== undefined) {
     console.error(error.message);
   }
 
+  try {
+    const historyFindings = scanHistory(repoRoot);
+    if (historyFindings.length === 0) {
+      record("HISTORY", "PASS", "no credential patterns in any recorded commit");
+    } else {
+      record("HISTORY", "FAIL", `${historyFindings.length} credential pattern(s) in history`);
+      for (const finding of historyFindings) {
+        console.log(`  ${formatHistoryFinding(finding)}`);
+      }
+    }
+  } catch (error) {
+    record("HISTORY", "FAIL", `secret history scan crashed: ${error.message}`);
+    console.error(error.message);
+  }
+
   const inventory = runNpm(["ls", "--all", "--json"]);
   const audit = runNpm(["audit", "--audit-level=high", "--json"]);
   if (inventory.status !== 0) {
     record("G4e", "FAIL", "dependency inventory could not be read from the lockfile");
+  } else if (audit.status === 0) {
+    record("G4e", "PASS", "inventory readable; npm audit reported no high or critical advisories");
+  } else if (audit.status === 1) {
+    let advisoryNames = "unknown";
+    try {
+      const auditJson = JSON.parse(audit.stdout);
+      advisoryNames = Object.keys(auditJson?.vulnerabilities ?? {}).join(", ") || "none";
+    } catch {
+      advisoryNames = "npm audit output was not parseable JSON";
+    }
+    record("G4e", "FAIL", `high or critical advisories: ${advisoryNames}`);
+    printBlock("G4e deps.vuln", trimEngineOutput(audit.stdout));
   } else {
-    const auditDetail =
-      audit.status === 0
-        ? "npm audit reported no high or critical advisories"
-        : "npm audit reported findings or could not run; advisory until observed failing";
-    record("G4e", "PARTIAL", `inventory readable; ${auditDetail}`);
+    record("G4e", "FAIL", `npm audit could not run (exit ${audit.status})`);
+    printBlock("G4e deps.vuln", audit.stderr);
   }
 
   if (build.status !== 0) {
@@ -187,11 +274,15 @@ if (elapsed > budgetMinutes * 60) {
 const blockingFailures = results.filter(
   (result) => result.status === "FAIL" && result.gate !== "CONFIG",
 );
-const configFailure = results.some((result) => result.gate === "CONFIG" && result.status === "FAIL");
+const configFailure = results.some(
+  (result) => result.gate === "CONFIG" && result.status === "FAIL",
+);
 
 console.log("\nGate summary");
 for (const result of results) {
-  console.log(`  ${result.gate.padEnd(7)} ${result.status.padEnd(9)} ${result.detail.split("\n")[0]}`);
+  console.log(
+    `  ${result.gate.padEnd(7)} ${result.status.padEnd(9)} ${result.detail.split("\n")[0]}`,
+  );
 }
 
 const failed = blockingFailures.length > 0 || configFailure;
@@ -200,7 +291,9 @@ console.log(
     `(budget ${budgetMinutes}m).`,
 );
 if (failed) {
-  console.log("Fix the failing gate; do not lower it. Waivers require an owner, a control, and an expiry.");
+  console.log(
+    "Fix the failing gate; do not lower it. Waivers require an owner, a control, and an expiry.",
+  );
 }
 
 process.exitCode = failed ? 1 : 0;

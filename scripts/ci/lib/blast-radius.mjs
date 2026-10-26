@@ -105,10 +105,9 @@ export function parseSlicePlan(markdown) {
   }
 
   const downgradeMatch = markdown.match(/^\|\s*Tier downgrade reason\s*\|\s*([^|]*)\|/m);
-  const rawReason = (downgradeMatch?.[1] ?? "")
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .trim();
-  const downgradeReason = rawReason === "" || rawReason.toLowerCase() === "n/a" ? undefined : rawReason;
+  const rawReason = (downgradeMatch?.[1] ?? "").replace(/<!--[\s\S]*?-->/g, "").trim();
+  const downgradeReason =
+    rawReason === "" || rawReason.toLowerCase() === "n/a" ? undefined : rawReason;
 
   const blastSection = markdown.split(/^##\s+Blast radius\s*$/m)[1]?.split(/^##\s+/m)[0] ?? "";
   const pathsRow = blastSection.match(/^\|\s*Paths\s*\/\s*modules\s*\|\s*([^|]*)\|/m);

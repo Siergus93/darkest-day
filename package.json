@@ -10,11 +10,20 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
+    "check:format": "node scripts/ci/format.mjs",
+    "check:lint": "node scripts/ci/lint.mjs",
+    "check:sast": "node scripts/ci/sast.mjs",
+    "check:secrets": "node scripts/ci/secrets.mjs",
+    "check:secrets-history": "node scripts/ci/secrets-history.mjs",
     "pretest": "npm run build",
     "test": "node --test \"test/**/*.test.mjs\"",
     "fast": "node scripts/ci/fast.mjs"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.3",
+    "@microsoft/eslint-plugin-sdl": "^1.1.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-security": "^4.2.0",
     "typescript": "^7.0.2"
   }
 }

@@ -1,8 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdirSync, unlinkSync } from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { test } from "node:test";
 import { changeSetNote, gitChangedPaths } from "../scripts/ci/lib/blast-radius.mjs";
 import { commitAll, createGitRepo, createTempDir, git, write } from "./helpers/git-repo.mjs";
 
@@ -151,7 +151,7 @@ test("a workspace that is not a git repository fails with an actionable message"
   assert.throws(() => gitChangedPaths(root), /Run inside a git repository, or pass --changed/);
 });
 
-test("a valueless --base is a usage error in both entry points, not a silent no-base run", (t) => {
+test("a valueless --base is a usage error in both entry points, not a silent no-base run", () => {
   const scripts = path.join(import.meta.dirname, "..", "scripts", "ci");
   for (const entryPoint of ["blast-radius.mjs", "fast.mjs"]) {
     const result = spawnSync(process.execPath, [path.join(scripts, entryPoint), "--base"], {
@@ -162,4 +162,3 @@ test("a valueless --base is a usage error in both entry points, not a silent no-
     assert.match(result.stderr, /--base requires a git ref/);
   }
 });
-

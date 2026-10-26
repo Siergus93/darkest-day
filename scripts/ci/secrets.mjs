@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { formatFinding, scanSecrets } from "./lib/secrets.mjs";
 import { repoRoot } from "./lib/config.mjs";
+import { formatFinding, scanSecrets } from "./lib/secrets.mjs";
 
 const findings = scanSecrets(repoRoot);
 

@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { parseSlicePlan } from "../scripts/ci/lib/blast-radius.mjs";
 
 const PLAN = `# Slice plan (A4)
@@ -28,7 +28,10 @@ test("a slice plan exposes its tier, globs, and downgrade reason", () => {
 });
 
 test("a written downgrade reason is preserved", () => {
-  const plan = PLAN.replace("| Tier downgrade reason | n/a |", "| Tier downgrade reason | docs only |");
+  const plan = PLAN.replace(
+    "| Tier downgrade reason | n/a |",
+    "| Tier downgrade reason | docs only |",
+  );
   assert.equal(parseSlicePlan(plan).downgradeReason, "docs only");
 });
 

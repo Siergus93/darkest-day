@@ -41,8 +41,15 @@ an explicit `--changed` list.
 
 ## Status
 
-`v0.2.0` — Phase 0 gate scaffolding is wired: clean build, type check, fast tests, secret
-scan, link check, and blast-radius/tier escalation, plus a thin GitHub Actions fast lane and
-a Node.js/TypeScript stack adapter. Format, lint, and SAST remain manual exceptions; the
-delivery adapter is pending its first remote run. See
-[CHANGELOG](CHANGELOG.md) and [07-adoption](docs/software-factory/07-adoption.md).
+`v0.3.0` — Phase 0 stream, all fast gates wired. The lane enforces: clean build, type
+check, format (Biome), lint (Biome), SAST (ESLint + `@microsoft/eslint-plugin-sdl` +
+`eslint-plugin-security`), fast tests, secret scan (working tree **and** full git history),
+and a **blocking** high/critical `npm audit` — plus the link check and blast-radius/tier
+escalation, in a thin GitHub Actions fast lane. Tool defaults and their ADRs:
+[ADR-0003](docs/decisions/ADR-0003-gate-tools.md),
+[ADR-0004](docs/decisions/ADR-0004-sast-and-history-implementation.md); the waiver
+register is [docs/waivers.md](docs/waivers.md). The VCS-faithful change set, format, lint,
+SAST, audit, and history smoke tests are in the
+[adapter record](adapters/stack/node-typescript.md). Delivery adapter proven on the first
+remote runs (PR #1, PR #3). See [CHANGELOG](CHANGELOG.md) and
+[07-adoption](docs/software-factory/07-adoption.md).

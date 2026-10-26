@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "factoryVersion": "0.2.0",
   "owner": "Siergus",
-  "activeSlice": "work/0002-vcs-faithful-diff",
+  "activeSlice": "work/0003-fast-gate-debt",
   "lanes": {
     "fast": {
       "trigger": "every change",
@@ -116,9 +116,9 @@
       "tier": "T0",
       "class": "M",
       "ports": ["format.check", "lint.check", "type.check", "sast"],
-      "status": "partial",
+      "status": "wired",
       "smokeTested": true,
-      "notes": "type.check is wired and was observed failing (TS2322); format, lint, and SAST are adapter exceptions."
+      "notes": "Each of the four ports is separately invocable and was observed failing on an injected defect (type TS2322; unformatted file; noDoubleEquals; child_process.exec fixture) and green after restore."
     },
     {
       "id": "G4c",
@@ -133,19 +133,19 @@
       "id": "G4d",
       "tier": "T0",
       "class": "M",
-      "ports": ["secrets.scan"],
+      "ports": ["secrets.scan", "secrets.history"],
       "status": "wired",
       "smokeTested": true,
-      "notes": "Repository-owned ruleset; working tree only until the history scan lands. Observed failing on a fake AWS key without printing the value."
+      "notes": "Repository-owned ruleset, applied to the working tree and to full git history (git log -p --all). Observed failing on a fake AWS key without printing the value (tree) and on a committed fake key in a fixture repository (history)."
     },
     {
       "id": "G4e",
       "tier": "T1",
       "class": "M+R",
       "ports": ["deps.inventory", "deps.vuln"],
-      "status": "partial",
-      "smokeTested": false,
-      "notes": "Lockfile inventory is wired; npm audit is advisory until observed failing."
+      "status": "wired",
+      "smokeTested": true,
+      "notes": "Lockfile inventory plus blocking high/critical audit. Observed failing once (fixture lockfile with lodash 4.17.20: exit 1, 1 high vulnerability) before being made blocking."
     },
     {
       "id": "G4f",

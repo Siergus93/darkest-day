@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { checkLinks } from "./lib/links.mjs";
 import { repoRoot } from "./lib/config.mjs";
+import { checkLinks } from "./lib/links.mjs";
 
 const findings = checkLinks(repoRoot);
 
