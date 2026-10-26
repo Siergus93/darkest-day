@@ -1,5 +1,10 @@
 #!/usr/bin/env node
-import { checkBlastRadius, formatBlastRadius, gitChangedPaths } from "./lib/blast-radius.mjs";
+import {
+  changeSetNote,
+  checkBlastRadius,
+  formatBlastRadius,
+  gitChangedPaths,
+} from "./lib/blast-radius.mjs";
 import { loadConfig, repoRoot } from "./lib/config.mjs";
 
 function parseArguments(argv) {
@@ -10,6 +15,9 @@ function parseArguments(argv) {
       options.slice = argv[index + 1];
       index += 1;
     } else if (argument === "--base") {
+      if (index + 1 >= argv.length) {
+        throw new Error(`--base requires a git ref; a valueless --base is a usage error, not a silent no-base run.`);
+      }
       options.base = argv[index + 1];
       index += 1;
     } else if (argument === "--changed") {
@@ -41,6 +49,13 @@ try {
     const config = loadConfig(repoRoot);
     const slice = options.slice ?? config.activeSlice;
     const changed = options.changed ?? gitChangedPaths(repoRoot, options.base);
+    const note = changeSetNote({
+      baseRef: options.base,
+      explicit: options.changed !== undefined,
+    });
+    if (note !== undefined) {
+      console.log(note);
+    }
     const result = await checkBlastRadius({ root: repoRoot, slice, changedPaths: changed });
     console.log(formatBlastRadius(result));
     process.exitCode = result.problems.length > 0 || result.outsideRadius.length > 0 ? 1 : 0;

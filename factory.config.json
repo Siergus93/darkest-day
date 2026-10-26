@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "factoryVersion": "0.2.0",
   "owner": "Siergus",
-  "activeSlice": "work/0001-enforce-phase-0",
+  "activeSlice": "work/0002-vcs-faithful-diff",
   "lanes": {
     "fast": {
       "trigger": "every change",
@@ -154,7 +154,7 @@
       "ports": ["vcs.diff"],
       "status": "wired",
       "smokeTested": true,
-      "notes": "Changed paths compared to the declared radius in A4. Observed failing on an undeclared path and on a T1 plan touching a protected path."
+      "notes": "Changed paths compared to the declared radius in A4. With --base, committed changes since the base, index changes (including index-only staged edits), unstaged tracked edits, deletions, renames, typechanges, and untracked files are combined; a base ref cannot begin with '-'. Without --base, both the fast lane and the blast-radius CLI warn that only the working tree is checked. Observed failing on an undeclared path and on a T1 plan touching a protected path."
     },
     {
       "id": "G5a",

@@ -29,12 +29,15 @@ AGENTS.md                context pack for agents working in this repository
 npm ci
 npm run build
 npm test
-npm run fast -- --changed "work/0001-enforce-phase-0/A4-slice-plan.md,scripts/ci/fast.mjs"
+npm run fast -- --changed "work/0002-vcs-faithful-diff/A4-slice-plan.md,scripts/ci/fast.mjs"
 ```
 
-The fast lane reads the active slice from `factory.config.json`. In a git repository it
-compares the working-tree diff; in CI it takes `--base <sha>`. Without git, pass an explicit
-`--changed` list.
+The fast lane reads the active slice from `factory.config.json`. With `--base <ref>` it
+combines committed changes since the base with index and working-tree changes, including
+index-only staged edits, deletions, renames, typechanges, and untracked paths. Without
+`--base` it checks only the working tree; the fast lane and
+`node scripts/ci/blast-radius.mjs` print that limitation. CI uses `--base`. Without git, pass
+an explicit `--changed` list.
 
 ## Status
 
