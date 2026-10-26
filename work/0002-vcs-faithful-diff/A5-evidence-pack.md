@@ -85,6 +85,7 @@
 | `node scripts/ci/blast-radius.mjs --base` | 1 | `--base requires a git ref; a valueless --base is a usage error, not a silent no-base run.` (P1 fix) |
 | `node scripts/ci/fast.mjs --base` | 1 | Same rejection before any gate ran (P1 fix) |
 | `npm run fast -- --base main` (after the P1 fix) | 0 | Fast lane PASSED; 43 passed, 0 failed; 15 paths |
+| Remote CI: `fast` workflow on PR #3 (`gh pr create` was blocked by a stale PATH; `gh --version 2.103.2` via full path) | 0 | Pull request #3 opened; workflow run 40407967150 on `ubuntu-24.04`: completed success in 15s — the lane's CI half is verified |
 | `git status --short` | 0 | 9 modified tracked paths and 3 untracked paths/groups, all inside the A4 radius |
 | `git diff --stat` | 0 | 9 tracked files changed, 131 insertions, 35 deletions; the new test and slice files are untracked |
 | `git status --short package.json package-lock.json` | 0 | Empty; no dependency or lockfile change |
@@ -243,8 +244,9 @@ for this slice.
   fails closed rather than producing a partial set; `git ls-files` failure is not promoted to a
   gate failure; newline, leading/trailing-space, and quoted-Unicode paths remain outside the
   line parser; entry-point note wiring is verified manually; fixtures isolate global config,
-  excludes, and hooks but still inherit ambient `GIT_DIR`/`GIT_WORK_TREE`. No remote CI run or
-  pull request exists yet, so the CI half of the lane is unverified.
+  excludes, and hooks but still inherit ambient `GIT_DIR`/`GIT_WORK_TREE`. The CI half of the
+  lane is now verified: PR #3 ran the `fast` workflow on `ubuntu-24.04` and succeeded (run
+  40407967150, 15s).
 - Commands not run and why: remote GitHub Actions (no commit or PR); dependency-vulnerability
   fixture (advisory gate); history scan (not implemented); no `npm ci` because the existing
   install was used.
