@@ -12,31 +12,89 @@ function splitLines(value) {
     .filter(Boolean);
 }
 
-/** Read changed paths from git. Throws when the workspace is not a repository. */
-export function gitChangedPaths(root = repoRoot, baseRef) {
-  const trimmedBase = baseRef?.trim();
-  const usableBase =
-    trimmedBase === undefined || trimmedBase === "" || /^0+$/.test(trimmedBase)
-      ? undefined
-      : trimmedBase;
-  const diffArgs = usableBase
-    ? ["diff", "--name-only", "--no-renames", "--diff-filter=ACMRD", `${usableBase}...HEAD`]
-    : ["diff", "--name-only", "--no-renames", "--diff-filter=ACMRD", "HEAD"];
+/** Normalise a base ref, treating an empty or all-zero SHA as no base. */
+export function normalizeBase(baseRef) {
+  const trimmed = baseRef?.trim();
+  if (trimmed === undefined || trimmed === "" || /^0+$/.test(trimmed)) {
+    return undefined;
+  }
+  if (trimmed.startsWith("-")) {
+    throw new Error(`Invalid base ref "${baseRef}": a base ref must not start with "-".`);
+  }
+  return trimmed;
+}
 
-  const diff = run("git", diffArgs, { cwd: root });
-  if (diff.status !== 0) {
-    throw new Error(
-      `git ${diffArgs.join(" ")} failed:\n${diff.output || diff.error || "unknown error"}\n` +
-        "Run inside a git repository, or pass --changed <comma-separated paths>.",
+/** Return the change-set source warning for a local run, or undefined when a base is present. */
+export function changeSetNote({ baseRef, explicit = false } = {}) {
+  if (explicit) {
+    return (
+      "\nNote: G4f is using an explicit --changed list, not a VCS diff. " +
+      "CI uses a git base, so a local pass is not proof that the list was complete."
     );
   }
+  if (normalizeBase(baseRef) === undefined) {
+    return (
+      "\nNote: G4f is using the working tree only; committed changes on the branch " +
+      "are not included. Pass --base <git-ref> to include them."
+    );
+  }
+  return undefined;
+}
+
+/**
+ * Read changed paths from git. Throws when the workspace is not a repository.
+ *
+ * The result is the union of four sources:
+ *   1. committed changes since the supplied base;
+ *   2. staged changes in the index;
+ *   3. unstaged tracked changes in the working tree, including deletions;
+ *   4. untracked files.
+ *
+ * Reading only `<base>...HEAD`, only the index, or only the working tree leaves
+ * part of the change set invisible; a local gate must not pass on an incomplete list.
+ */
+export function gitChangedPaths(root = repoRoot, baseRef) {
+  const usableBase = normalizeBase(baseRef);
+  const paths = new Set();
+
+  const collect = (args) => {
+    const diff = run("git", args, { cwd: root });
+    if (diff.status !== 0) {
+      throw new Error(
+        `git ${args.join(" ")} failed:\n${diff.output || diff.error || "unknown error"}\n` +
+          "Run inside a git repository, or pass --changed <comma-separated paths>.",
+      );
+    }
+    for (const line of splitLines(diff.stdout)) {
+      paths.add(line);
+    }
+  };
+
+  if (usableBase !== undefined) {
+    collect([
+      "diff",
+      "--name-only",
+      "--no-renames",
+      // T covers typechanges; U covers unmerged paths so a conflict cannot hide a change.
+      "--diff-filter=ACDMRTU",
+      `${usableBase}...HEAD`,
+    ]);
+  }
+
+  // `git diff HEAD` compares the working tree to HEAD. It misses an index-only
+  // change whose working-tree copy has been restored to HEAD, so read the index
+  // separately and union the two.
+  collect(["diff", "--cached", "--name-only", "--no-renames", "--diff-filter=ACDMRTU", "HEAD"]);
+  collect(["diff", "--name-only", "--no-renames", "--diff-filter=ACDMRTU", "HEAD"]);
 
   const untracked = run("git", ["ls-files", "--others", "--exclude-standard"], { cwd: root });
-  const paths = [...splitLines(diff.stdout)];
   if (untracked.status === 0) {
-    paths.push(...splitLines(untracked.stdout));
+    for (const line of splitLines(untracked.stdout)) {
+      paths.add(line);
+    }
   }
-  return [...new Set(paths)].sort();
+
+  return [...paths].sort();
 }
 
 /** Extract the tier, downgrade reason, and declared globs from an A4 slice plan. */

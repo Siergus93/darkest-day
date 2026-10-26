@@ -3,7 +3,12 @@ import { loadConfig, repoRoot } from "./lib/config.mjs";
 import { runNpm } from "./lib/run.mjs";
 import { formatFinding, scanSecrets } from "./lib/secrets.mjs";
 import { checkLinks } from "./lib/links.mjs";
-import { checkBlastRadius, formatBlastRadius, gitChangedPaths } from "./lib/blast-radius.mjs";
+import {
+  changeSetNote,
+  checkBlastRadius,
+  formatBlastRadius,
+  gitChangedPaths,
+} from "./lib/blast-radius.mjs";
 
 const results = [];
 const startedAt = performance.now();
@@ -32,6 +37,9 @@ function parseArguments(argv) {
       options.slice = argv[index + 1];
       index += 1;
     } else if (argument === "--base") {
+      if (index + 1 >= argv.length) {
+        throw new Error(`--base requires a git ref; a valueless --base is a usage error, not a silent no-base run.`);
+      }
       options.base = argv[index + 1];
       index += 1;
     } else if (argument === "--changed") {
@@ -147,11 +155,12 @@ if (config !== undefined) {
   } else {
     try {
       const changed = options.changed ?? gitChangedPaths(repoRoot, options.base);
-      if (options.changed !== undefined) {
-        console.log(
-          "\nNote: G4f is using an explicit --changed list, not a VCS diff. " +
-            "CI uses a git base, so a local pass is not proof that the list was complete.",
-        );
+      const note = changeSetNote({
+        baseRef: options.base,
+        explicit: options.changed !== undefined,
+      });
+      if (note !== undefined) {
+        console.log(note);
       }
       const radius = await checkBlastRadius({ root: repoRoot, slice, changedPaths: changed });
       const failed = radius.problems.length > 0 || radius.outsideRadius.length > 0;

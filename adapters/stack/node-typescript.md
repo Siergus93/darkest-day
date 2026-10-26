@@ -40,7 +40,7 @@ This adapter covers the factory's own tooling. It does not bind a product stack.
 | `alert.route` | Not applicable | — | — | No alerts |
 | `perf.measure` | Fast lane wall clock | `npm run fast` | Elapsed time in the summary | Budget is 10 minutes from the manifest |
 | `docs.link` | Relative link checker | `node scripts/ci/links.mjs` | Broken-link report | Reads Markdown outside fenced code |
-| `vcs.diff` | Blast radius checker | `node scripts/ci/blast-radius.mjs` | Radius report and tier escalation | Needs git or an explicit `--changed` list |
+| `vcs.diff` | Blast radius checker | `node scripts/ci/blast-radius.mjs` | Radius report and tier escalation | Needs git or an explicit `--changed` list; `--base` combines committed, staged, unstaged, deleted, renamed, untracked, and typechanged paths; both entry points warn without a base |
 
 ## Stack conventions
 
@@ -85,6 +85,8 @@ row is not blocking.
 | `secrets.scan` | Wrote `aws_access_key_id = <fake key>` to `smoke-secret.txt` | `smoke-secret.txt:1 [aws-access-key] AWS access key id`; exit 1; the value was not printed | yes (file deleted) | 2026-10-23 |
 | `vcs.diff` | Passed `assets/logo.png`, which no A4 glob covers | `outside declared radius: assets/logo.png`; exit 1 | n/a (no write) | 2026-10-23 |
 | `vcs.diff` (tier) | Temporary T1 plan changed `scripts/ci/fast.mjs` | `declared T1, required T2`; escalation message; downgrade without a reason rejected; exit 1 | yes (temp slice deleted) | 2026-10-23 |
+| `vcs.diff` (working tree) | Committed `README.md` change plus an uncommitted tracked edit outside the 0002 radius | The uncommitted path was missing before the fix; after the fix it is reported as `outside declared radius` and the command exits 1 | yes (scratch worktree removed) | 2026-10-26 |
+| `vcs.diff` (index-only) | Committed `README.md` change plus a staged tracked edit outside the 0002 radius, with the working-tree copy restored to `HEAD` | `git diff HEAD` omitted the path; after the fix the index source reports it as `outside declared radius` and the command exits 1 | yes (scratch worktree removed) | 2026-10-26 |
 | `deps.vuln` | Not exercised (advisory) | — | — | — |
 
 ## Notes on portability

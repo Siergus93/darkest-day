@@ -18,7 +18,7 @@ disagree, the model wins and this file is a defect.
 ## Current state
 
 - Factory version: `0.2.0` (see [`CHANGELOG.md`](CHANGELOG.md)).
-- Active slice: `work/0001-enforce-phase-0`.
+- Active slice: `work/0002-vcs-faithful-diff`.
 - Stack binding: [`adapters/stack/node-typescript.md`](adapters/stack/node-typescript.md).
 - Delivery binding: [`adapters/ci/github-actions.md`](adapters/ci/github-actions.md).
 
@@ -29,7 +29,11 @@ disagree, the model wins and this file is a defect.
 - Build and type-check: `npm run build`
 - Tests only: `npm test`
 - Fast lane: `npm run fast -- --changed <comma-separated paths>`
-  - In a git repository the default uses the working-tree diff; in CI pass `--base <sha>`.
+  - With `--base <ref>`, the change set includes committed changes since the base plus index
+    and working-tree changes, including index-only staged edits, deletions, renames,
+    typechanges, and untracked paths. Without
+    `--base` only the working tree is checked and both the lane and the blast-radius CLI say
+    so; in CI pass `--base <sha>`.
   - The lane reads the active slice from `factory.config.json`.
 
 ## Boundaries

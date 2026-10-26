@@ -2,6 +2,16 @@
 
 The factory is a product: it has a version, and material changes are recorded here.
 
+## [Unreleased]
+
+### Fixed
+
+- `vcs.diff` / `G4f` now evaluates one complete local change set: committed changes since
+  `--base`, index changes (including index-only staged edits), unstaged tracked edits,
+  deletions, renames, typechanges, and untracked files. A base ref cannot begin with `-`.
+  The fast lane and `scripts/ci/blast-radius.mjs` both print that committed branch changes
+  are not included when no `--base` is supplied.
+
 ## [0.2.0] — 2026-10-23
 
 - Version control and the GitHub Actions fast lane for the factory repository.
