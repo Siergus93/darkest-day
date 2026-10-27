@@ -17,8 +17,29 @@
 //   - member access on any object, computed or not: cp.exec(…), cp["exec"](…),
 //     require("node:child_process").exec(…);
 //   - a bare identifier resolving to an import (including named aliases:
-//     `import { exec as e }`), a require-destructure, or an
-//     `await import("node:child_process")` destructure of an exec-family method.
+//     `import { exec as e }`), a require-destructure, an
+//     `await import("node:child_process")` destructure of an exec-family method,
+//     or the same reached through an identifier alias chain
+//     (`const r = require; const c = r("child_process")` — bounded, cycle-safe).
+//
+// Accepted edges (FU-8, slice 0009, refined after the fresh-context FAIL round):
+//   - a member key or module specifier computed from runtime values (`cp[key]`,
+//     specifier built from input) — not coverable by ANY AST rule;
+//   - a const-bound key or specifier (`const K = "exec"; cp[K](…)`,
+//     `const M = "node:child_process"; await import(M)`) — resolvable in
+//     principle, left to the accepted-edge class to keep the resolver simple;
+//   - empty-interpolation templates (`cp[ex${""}ec]`) and destructures from the
+//     module object (`const { exec } = cp`) — pre-existing static escapes,
+//     recorded here rather than silently omitted;
+//   - a require function bound to a name other than `require`
+//     (`const rq = module.createRequire(…)`) — only a chain ending at the name
+//     `require` is followed.
+//
+// Over-approximation, also by decision (ADR-0004's unconditional ban): a folded
+// or plain exec-family member is flagged on ANY receiver object
+// (`re["ex" + "ec"](…)`, `runner.exec(…)`), so a false positive is possible on
+// non-child_process objects by design — the sanctioned spawn pattern is the
+// declared escape from this rule.
 //
 // `security/detect-child-process` stays in the pack as an independent second opinion
 // over static import declarations and `require()` for non-literal first arguments.
@@ -31,13 +52,39 @@ function memberReportsExecFamily(node) {
     return null;
   }
   if (node.computed) {
-    if (node.property?.type === "Literal" && EXEC_FAMILY.has(node.property.value)) {
-      return node.property.value;
+    const folded = foldStringLiteral(node.property);
+    if (folded !== null && EXEC_FAMILY.has(folded)) {
+      return folded;
     }
     return null;
   }
   if (node.property?.type === "Identifier" && EXEC_FAMILY.has(node.property.name)) {
     return node.property.name;
+  }
+  return null;
+}
+
+/**
+ * Constant-fold a string expression: a string Literal, a TemplateLiteral with
+ * zero expressions, or a (nested) `+` concatenation of foldable parts.
+ * Returns null for anything else — a runtime-computed key (`cp[key]`, `key`
+ * from input) is NOT coverable by any AST rule and stays a documented accepted
+ * edge (FU-8), not a false positive.
+ */
+function foldStringLiteral(node, depth = 0) {
+  if (depth > 5) {
+    return null;
+  }
+  if (node?.type === "Literal" && typeof node.value === "string") {
+    return node.value;
+  }
+  if (node?.type === "TemplateLiteral" && (node.expressions?.length ?? 0) === 0) {
+    return node.quasis.map((quasi) => quasi.value.cooked ?? "").join("");
+  }
+  if (node?.type === "BinaryExpression" && node.operator === "+") {
+    const left = foldStringLiteral(node.left, depth + 1);
+    const right = foldStringLiteral(node.right, depth + 1);
+    return left !== null && right !== null ? left + right : null;
   }
   return null;
 }
@@ -65,7 +112,9 @@ function resolveChildProcessExecBinding(context, identifier) {
         }
         if (def.type === "Variable" && def.node?.id) {
           const init = def.node.init;
-          const source = staticModuleSource(init);
+          // Direct require/import first, then identifier alias chains
+          // (FU-8: `const r = require; const cp = r("child_process")`).
+          const source = staticModuleSourceViaAliases(context, init);
           if (!source) {
             continue;
           }
@@ -88,12 +137,81 @@ function staticModuleSource(init) {
     init.callee.name === "require"
   ) {
     const arg = init.arguments[0];
-    return arg?.type === "Literal" && CHILD_PROCESS_MODULES.has(arg.value) ? init : null;
+    const spec = foldStringLiteral(arg);
+    return spec !== null && CHILD_PROCESS_MODULES.has(spec) ? init : null;
   }
   if (init?.type === "AwaitExpression") {
     const awaited = init.argument;
     const arg = awaited?.type === "ImportExpression" ? awaited.source : null;
-    return arg?.type === "Literal" && CHILD_PROCESS_MODULES.has(arg.value) ? init : null;
+    const spec = foldStringLiteral(arg);
+    return spec !== null && CHILD_PROCESS_MODULES.has(spec) ? init : null;
+  }
+  return null;
+}
+
+/**
+ * Whether an identifier's binding chain (`const r = require; const c = r; …`)
+ * bottoms out at a binding named `require` — bounded at 5 hops (A2 design 3)
+ * and cycle-safe via the seen-set (FU-8, multi-hop rebinding). A deeper chain
+ * degrades to the accepted-edge class (unresolvable → clean).
+ */
+const MAX_ALIAS_HOPS = 5;
+
+function chainReachesRequire(context, identifier, seen, depth = 0) {
+  if (identifier?.type !== "Identifier") {
+    return false;
+  }
+  const name = identifier.name;
+  if (seen.has(name)) {
+    return false;
+  }
+  seen.add(name);
+  if (name === "require") {
+    return true;
+  }
+  if (depth >= MAX_ALIAS_HOPS) {
+    return false;
+  }
+  const sourceCode = context.sourceCode || context.getSourceCode();
+  const startingScope = sourceCode.getScope ? sourceCode.getScope(identifier) : context.getScope();
+  for (let scope = startingScope; scope !== null; scope = scope.upper) {
+    for (const variable of scope.variables) {
+      if (variable.name !== name) {
+        continue;
+      }
+      for (const def of variable.defs) {
+        if (def.type === "Variable" && def.node?.init?.type === "Identifier") {
+          return chainReachesRequire(context, def.node.init, seen, depth + 1);
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * The module source of a `require(…)` / `await import(…)` init reached through
+ * an identifier alias chain (`const r = require; const c = r("…")`), or null.
+ * The chain is bounded and cycle-safe (FU-8, multi-hop rebinding).
+ */
+function staticModuleSourceViaAliases(context, init, seen = new Set()) {
+  const direct = staticModuleSource(init);
+  if (direct) {
+    return direct;
+  }
+  if (
+    init?.type !== "CallExpression" ||
+    init.callee?.type !== "Identifier" ||
+    seen.has(init.callee.name)
+  ) {
+    return null;
+  }
+  seen.add(init.callee.name);
+  if (init.callee.name === "require" || chainReachesRequire(context, init.callee, new Set())) {
+    // The callee resolves to a require function; apply the same spec check.
+    const arg = init.arguments[0];
+    const spec = foldStringLiteral(arg);
+    return spec !== null && CHILD_PROCESS_MODULES.has(spec) ? init : null;
   }
   return null;
 }

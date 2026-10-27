@@ -113,6 +113,54 @@ const cases = [
     'import cp from "node:child_process";\ncp.spawn("git", ["status"]);',
     [],
   ],
+  // FU-8 (slice 0009): the three static obfuscation shapes the resolver missed.
+  [
+    "constant-folded computed member key (FU-8 shape 1)",
+    'import cp from "node:child_process";\ncp["ex" + "ec"]("rm -rf /");',
+    ["factory/literal-command-exec"],
+  ],
+  [
+    "template-literal module specifier, no interpolation (FU-8 shape 2)",
+    'const { exec } = await import(`node:child_process`);\nexec("rm -rf /");',
+    ["factory/literal-command-exec"],
+  ],
+  [
+    "multi-hop require alias chain (FU-8 shape 3)",
+    'import { createRequire } from "node:module";\nconst require = createRequire(import.meta.url);\nconst r = require;\nconst { exec } = r("node:child_process");\nexec("rm -rf /");',
+    ["factory/literal-command-exec"],
+  ],
+  [
+    "require of a template-literal specifier (FU-8 shape 2, require side)",
+    'import { createRequire } from "node:module";\nconst require = createRequire(import.meta.url);\nconst { execSync } = require(`node:child_process`);\nexecSync("rm -rf /");',
+    ["factory/literal-command-exec"],
+  ],
+  // Accepted edges and sanctioned patterns must stay clean (no false positives).
+  [
+    "runtime-computed member key stays clean (accepted edge, FU-8)",
+    'import cp from "node:child_process";\nconst key = process.argv[2];\ncp[key]("ls");',
+    [],
+  ],
+  [
+    "spawn through a require alias chain stays clean (sanctioned)",
+    'import { createRequire } from "node:module";\nconst require = createRequire(import.meta.url);\nconst r = require;\nconst { spawnSync } = r("node:child_process");\nspawnSync("git", ["status"]);',
+    [],
+  ],
+  // Documented accepted edges + over-approximation (fresh-context round 1, N1/N5).
+  [
+    "const-bound member key stays clean (accepted edge, N1)",
+    'import cp from "node:child_process";\nconst K = "exec";\ncp[K]("ls");',
+    [],
+  ],
+  [
+    "empty-interpolation template key stays clean (accepted edge, N1)",
+    'import cp from "node:child_process";\ncp[`ex${""}ec`]("ls");',
+    [],
+  ],
+  [
+    "folded exec key on a NON-child_process object is flagged by design (over-approximation, N5)",
+    'const runner = { exec: (cmd) => cmd };\nrunner["ex" + "ec"]("build");',
+    ["factory/literal-command-exec"],
+  ],
 ];
 
 test("the ADR-0004 coverage holds: every exec-family shape is rejected, sanctioned usage passes", async () => {

@@ -12,20 +12,47 @@ import { createTempDir, write } from "./helpers/git-repo.mjs";
  * Port names (`format.check`, `vcs.diff`, …) do not map to filenames mechanically, so this
  * table is the declared mapping: adding or retiring a wired gate is a data edit here, and
  * the set-equality test below fails until both sides agree.
+ *
+ * FU-4 (slice 0009): `wrapperLibs` pins the `scripts/ci/lib/*.mjs` modules each wrapper
+ * actually executes — derived from the wrappers' import statements. A wired gate's
+ * evidence used to have an unpinned middle link: a renamed lib crashed the lane
+ * accidentally, and a *rewired* wrapper that stopped importing the lib was invisible.
+ * Now the links are declared and machine-checked (wrapper source must contain each
+ * declared specifier).
  */
 const WIRED_GATE_EVIDENCE = {
-  G4a: { wrappers: [], rows: ["G4a"] },
+  G4a: { wrappers: [], rows: ["G4a"], wrapperLibs: {} },
   G4b: {
     wrappers: ["scripts/ci/format.mjs", "scripts/ci/lint.mjs", "scripts/ci/sast.mjs"],
     rows: ["FORMAT", "LINT", "SAST", "G4b"],
+    wrapperLibs: {
+      "scripts/ci/format.mjs": ["lib/format-lint.mjs"],
+      "scripts/ci/lint.mjs": ["lib/format-lint.mjs"],
+      "scripts/ci/sast.mjs": ["lib/config.mjs", "lib/sast.mjs"],
+    },
   },
-  G4c: { wrappers: [], rows: ["G4c"] },
+  G4c: { wrappers: [], rows: ["G4c"], wrapperLibs: {} },
   G4d: {
     wrappers: ["scripts/ci/secrets.mjs", "scripts/ci/secrets-history.mjs"],
     rows: ["G4d", "HISTORY"],
+    wrapperLibs: {
+      "scripts/ci/secrets.mjs": ["lib/config.mjs", "lib/secrets.mjs"],
+      "scripts/ci/secrets-history.mjs": ["lib/secrets-history.mjs"],
+    },
   },
-  G4e: { wrappers: [], rows: ["G4e"] },
-  G4f: { wrappers: ["scripts/ci/blast-radius.mjs"], rows: ["G4f"] },
+  G4e: { wrappers: [], rows: ["G4e"], wrapperLibs: {} },
+  // Note (fresh-context N3, slice 0009): scripts/ci/links.mjs is NOT a G4e
+  // wrapper — it implements the docs.link port, which belongs to G0 (manual).
+  // G4e's audit logic (deps.inventory / deps.vuln) runs inline in fast.mjs via
+  // runNpm, which is why it has no wrapper file of its own; its libs are pinned
+  // through LANE_LIBS below.
+  G4f: {
+    wrappers: ["scripts/ci/blast-radius.mjs"],
+    rows: ["G4f"],
+    wrapperLibs: {
+      "scripts/ci/blast-radius.mjs": ["lib/blast-radius.mjs", "lib/config.mjs"],
+    },
+  },
   /**
    * Release-lane evidence shape (slice 0007): a gate wired by a workflow is
    * pinned to the workflow file and to step names that must appear in it.
@@ -35,9 +62,31 @@ const WIRED_GATE_EVIDENCE = {
    * observed first (run 40574701583), then this row was added.
    */
   G6a: {
+    wrappers: [],
+    rows: [],
+    wrapperLibs: {},
     workflows: [".github/workflows/release.yml"],
     steps: ["Pack", "Checksum", "Attach"],
   },
+};
+
+/**
+ * The lane itself, pinned like a wrapper (FU-4): every lib module the fast lane
+ * executes is declared here, so rewiring the lane's imports is a table edit that
+ * the tests verify against the lane's source.
+ */
+const LANE_LIBS = {
+  "scripts/ci/fast.mjs": [
+    "lib/blast-radius.mjs",
+    "lib/config.mjs",
+    "lib/engines.mjs",
+    "lib/format-lint.mjs",
+    "lib/links.mjs",
+    "lib/run.mjs",
+    "lib/sast.mjs",
+    "lib/secrets.mjs",
+    "lib/secrets-history.mjs",
+  ],
 };
 
 const KNOWN_STATUSES = new Set(["manual", "wired", "partial", "n/a"]);
@@ -204,6 +253,136 @@ test("every lane row a wired gate declares appears in the fast lane", () => {
     }
   }
   assert.deepEqual(missing, [], `Wired gates with missing lane rows: ${missing.join(", ")}`);
+});
+
+/**
+ * Whether the wrapper source IMPORTS the lib — not merely mentions it.
+ * (Fresh-context finding B1, slice 0009: a substring check false-passed a
+ * rewired wrapper whose stale comment still named the old specifier.)
+ * Conservative comment stripping: drop `//` line comments that are not part
+ * of a URL (`://`); the wrappers' specifiers then must appear inside a
+ * `from "…"` / `import("…")` clause.
+ */
+function wrapperImportsLib(source, lib) {
+  const withoutComments = source
+    .split(/\r?\n/)
+    .map((line) => {
+      const marker = line.indexOf("//");
+      if (marker === -1 || line.slice(0, marker).includes("://")) {
+        return line;
+      }
+      return line.slice(0, marker);
+    })
+    .join("\n");
+  // Check both static `from "<...lib/x.mjs>"` and dynamic `import("<...lib/x.mjs>")`.
+  for (const clause of ['from "', 'import("', "import ('"]) {
+    let index = withoutComments.indexOf(clause);
+    while (index !== -1) {
+      const start = index + clause.length;
+      const end = withoutComments.indexOf(quoteChar(clause), start);
+      if (end !== -1) {
+        const specifier = withoutComments.slice(start, end);
+        if (specifier === `./${lib}` || specifier.endsWith(`/${lib}`) || specifier === lib) {
+          return true;
+        }
+      }
+      index = withoutComments.indexOf(clause, index + 1);
+    }
+  }
+  return false;
+}
+
+function quoteChar(clause) {
+  return clause.endsWith('"') ? '"' : "'";
+}
+
+/**
+ * FU-4 (slice 0009): the declared wrapper→lib links, checked against the
+ * wrapper sources. Returns findings naming the gate, wrapper, and module.
+ */
+function missingLibEvidence(root, entries, laneLibs = {}) {
+  const declared = Object.entries(entries).flatMap(([gateId, evidence]) =>
+    Object.entries(evidence.wrapperLibs ?? {}).map(([wrapper, libs]) => ({
+      gateId,
+      wrapper,
+      libs,
+    })),
+  );
+  declared.push(
+    ...Object.entries(laneLibs).map(([wrapper, libs]) => ({ gateId: "lane", wrapper, libs })),
+  );
+
+  const findings = [];
+  for (const { gateId, wrapper, libs } of declared) {
+    const wrapperPath = path.join(root, wrapper);
+    if (!existsSync(wrapperPath)) {
+      findings.push(`${gateId}: wrapper missing: ${wrapper}`);
+      continue;
+    }
+    const source = readFileSync(wrapperPath, "utf8");
+    for (const lib of libs) {
+      if (!existsSync(path.join(root, "scripts/ci", lib))) {
+        findings.push(`${gateId}: ${wrapper} declares missing lib "${lib}"`);
+      } else if (!wrapperImportsLib(source, lib)) {
+        findings.push(
+          `${gateId}: ${wrapper} no longer imports its declared lib "${lib}" — ` +
+            "rewire the evidence table or restore the import",
+        );
+      }
+    }
+  }
+  return findings;
+}
+
+test("every lib module a wired gate declares exists and is imported by its wrapper", () => {
+  const findings = missingLibEvidence(repoRoot, WIRED_GATE_EVIDENCE, LANE_LIBS);
+  assert.deepEqual(
+    findings,
+    [],
+    `Wired gates with drifted wrapper/lib links: ${findings.join(", ")}`,
+  );
+});
+
+test("the lib-link check fails when a wrapper stops importing a declared lib (synthetic fixture)", (t) => {
+  const root = createTempDir(t);
+  write(root, "scripts/ci/lib/engine.mjs", "export const ok = 1;\n");
+  write(root, "scripts/ci/wrapped.mjs", 'import { ok } from "./lib/engine.mjs";\nok;\n');
+  assert.deepEqual(
+    missingLibEvidence(root, {
+      G4x: {
+        wrappers: ["scripts/ci/wrapped.mjs"],
+        rows: [],
+        wrapperLibs: { "scripts/ci/wrapped.mjs": ["lib/engine.mjs"] },
+      },
+    }),
+    [],
+    "a faithful wrapper/lib pair produces no findings",
+  );
+
+  // The FU-4 gap: the wrapper is REWIRED away from the declared lib (which still
+  // exists), so existence checks alone cannot catch it — the import check must.
+  write(root, "scripts/ci/wrapped.mjs", "export const rewired = true;\n");
+  // Fresh-context finding B1 (slice 0009): a stale COMMENT mentioning the old
+  // specifier must not false-pass the check — comments are stripped.
+  write(
+    root,
+    "scripts/ci/wrapped.mjs",
+    'import { ok2 } from "./lib/other.mjs";\n// migrated away from ./lib/engine.mjs\nok2;\n',
+  );
+  write(root, "scripts/ci/lib/other.mjs", "export const ok2 = 2;\n");
+  assert.deepEqual(
+    missingLibEvidence(root, {
+      G4x: {
+        wrappers: ["scripts/ci/wrapped.mjs"],
+        rows: [],
+        wrapperLibs: { "scripts/ci/wrapped.mjs": ["lib/engine.mjs"] },
+      },
+    }),
+    [
+      'G4x: scripts/ci/wrapped.mjs no longer imports its declared lib "lib/engine.mjs" — rewire the evidence table or restore the import',
+    ],
+    "a rewired wrapper must be named, even when a comment still mentions the old specifier",
+  );
 });
 
 test("factoryVersion matches the newest released CHANGELOG section and package.json", () => {
