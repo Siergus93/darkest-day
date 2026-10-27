@@ -9,8 +9,12 @@ import { repoRoot } from "../scripts/ci/lib/config.mjs";
 // the REAL rule pack (eslint.config.mjs) with a virtual file path, so the
 // tests fail if the pack drifts from the coverage table below.
 //
-//   factory/literal-command-exec : raw commands (literal or template)
-//   security/detect-child-process : dynamic commands (non-literal first arg)
+// Coverage (amendment v2, after fresh-context verification): the exec family is
+// banned UNCONDITIONALLY — argument classification cannot cover every shape
+// (dynamic-import destructures, computed members, static concat escaped the
+// narrower v1 rule; the slice's fresh-context verifier falsified v1 and the
+// decision was simplified so none of those edges can reopen the ban).
+// spawn/spawnSync with argument arrays is the sanctioned pattern.
 
 const ESLint_CONFIG = path.join(repoRoot, "eslint.config.mjs");
 
@@ -35,38 +39,68 @@ const cases = [
     ["factory/literal-command-exec"],
   ],
   [
-    "aliased named import must not bypass",
+    "aliased named import must not bypass (v1 bug shape)",
     'import { exec as e } from "node:child_process";\ne("node --version");',
     ["factory/literal-command-exec"],
   ],
   [
-    "default-import member call with literal command",
+    "default-import member call",
     'import cp from "node:child_process";\ncp.exec("node --version");',
     ["factory/literal-command-exec"],
   ],
   [
-    "member execFile with literal executable",
-    'import cp from "node:child_process";\ncp.execFile("node", ["--version"]);',
+    "namespace import member call",
+    'import * as cp from "node:child_process";\ncp.exec("node --version");',
     ["factory/literal-command-exec"],
   ],
   [
-    "createRequire member call with literal command",
+    "require member call",
     'import { createRequire } from "node:module";\nconst require = createRequire(import.meta.url);\nrequire("node:child_process").exec("node --version");',
     ["factory/literal-command-exec"],
   ],
   [
-    "statically-known template interpolation is effectively literal",
+    "require destructure (v1 gap shape closed by unconditional ban)",
+    'import { createRequire } from "node:module";\nconst require = createRequire(import.meta.url);\nconst { exec } = require("node:child_process");\nexec("node --version");',
+    ["factory/literal-command-exec"],
+  ],
+  [
+    "top-level await import destructure (fresh-context falsifying shape v7)",
+    'const { exec } = await import("node:child_process");\nexec("rm -rf /");',
+    ["factory/literal-command-exec"],
+  ],
+  [
+    "aliased top-level await import destructure",
+    'const { exec: e } = await import("node:child_process");\ne("rm -rf /");',
+    ["factory/literal-command-exec"],
+  ],
+  [
+    'computed member access cp["exec"] bypass shape',
+    'import cp from "node:child_process";\ncp["exec"]("rm -rf /");',
+    ["factory/literal-command-exec"],
+  ],
+  [
+    "family method (execFile) with non-static args (v7 shape family)",
+    'import { execFile } from "node:child_process";\nconst f = process.argv[2];\nexecFile(f, ["--x"]);',
+    ["factory/literal-command-exec"],
+  ],
+  [
+    "static template interpolation is effectively literal",
     'import { exec } from "node:child_process";\nconst c = "node --version";\nexec(`ls ${c}`);',
     ["factory/literal-command-exec"],
   ],
   [
-    "dynamic template is covered by the non-literal rule",
+    "static string concatenation (documented v1 edge, closed by the ban)",
+    'import { exec } from "node:child_process";\nexec("node --ver" + "sion");',
+    ["factory/literal-command-exec"],
+  ],
+  [
+    "dynamic template is covered (factory rule + second opinion)",
     'import { exec } from "node:child_process";\nconst cmd = process.argv[2];\nexec(`ls ${cmd}`);',
     ["factory/literal-command-exec", "security/detect-child-process"],
   ],
   [
-    "bare identifier not resolving to child_process stays clean",
-    'const helper = () => {};\nconst exec = helper;\nexec("idle work");',
+    "a bare identifier not resolving to child_process stays clean",
+    'const exec = () => {};\nexec("idle work");',
     [],
   ],
   [
@@ -75,13 +109,13 @@ const cases = [
     [],
   ],
   [
-    "exec family with no arguments stays clean",
-    'import { execSync } from "node:child_process";\nexecSync();',
+    "spawn through a member alias stays clean",
+    'import cp from "node:child_process";\ncp.spawn("git", ["status"]);',
     [],
   ],
 ];
 
-test("the ADR-0004 coverage table holds: raw command execution fails, sanctioned usage passes", async () => {
+test("the ADR-0004 coverage holds: every exec-family shape is rejected, sanctioned usage passes", async () => {
   for (const [name, source, expected] of cases) {
     const ruleIds = await lintFixture(source);
     assert.deepEqual(

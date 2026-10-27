@@ -49,6 +49,52 @@ The static-template escape (found mid-verify: `exec(`ls ${c}`)` with statically-
 passed BOTH rules) decided the template rule: templates are raw commands, not optionally
 static expressions.
 
+## Fix round (2026-10-27): the fresh-context verifier found the v1 gaps — closing them
+
+The fresh-context verification returned **FAIL** with three escape shapes the v1 "raw-command"
+rule and the stock plugin both missed (see the verifier section below): top-level
+`await import()` destructure (V7), computed member `cp["exec"](...)`, and non-`exec` family
+methods with dynamic args (the stock plugin covers only bare `exec` dynamically). Rather
+than enumerate shapes, the decision was simplified per ADR-0004 amendment v2: **the exec
+family is banned unconditionally** — any resolved exec-family call fails, whichever shape
+carries it. `spawn`/`spawnSync` with argument arrays stays the sanctioned pattern.
+
+Resolution is now shape-complete: member access (computed included), static imports
+including aliases, require-destructure, and `await import()` destructures (aliased
+included). Deliberate clean areas: `spawn`/`spawnSync` with argument arrays, and
+exec-family-named identifiers that do not resolve to child_process.
+
+The re-run of the verifier's exact falsifying probes through the real pack:
+
+```
+V7 dynamic-import destructure literal     OK (factory/literal-command-exec)
+V7 aliased dynamic-import destructure     OK (factory/literal-command-exec)
+computed member cp["exec"]                OK (factory/literal-command-exec)
+family execFile dynamic args              OK (factory/literal-command-exec)
+static binary concat ("a" + "b")          OK (factory/literal-command-exec)   <- documented v1 edge, now covered
+dynamic template                          OK (factory + security/detect-child-process)
+bare local helper untouched               OK (clean)
+spawn arg-array / spawn member            OK (clean)
+```
+
+The permanent 17-fixture matrix (all of the above + named/alias/default/namespace/
+require-member/require-destructure/static-template) is pinned in `test/sast-literal.test.mjs`
+(`npm test` → 56/56). FU-6/FU-7 are registered closed in `docs/backlog.md` (closed by this
+amendment, with their evidence). The SAST scope note now states only the truth (AC-5).
+
+Lane after the fix round:
+
+```
+> npm run fast -- --base 961b3e4
+  SAST    PASS      security rule pack: 0 violation(s), 0 warning(s)
+  G4c     PASS      56 passed, 0 failed, 8318.7649ms
+  G4f     PASS      Slice work/0005-sast-literal-coverage: declared T2, required T2, 14 changed path(s).
+Fast lane PASSED in 14.4s (budget 10m).
+Exit code: 0
+```
+
+
+
 ## Smokes 1–2 (AC-2 / AC-3), verbatim
 
 ```
