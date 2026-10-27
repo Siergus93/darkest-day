@@ -25,8 +25,8 @@
 
 | Slice | Item | Tier | State |
 | --- | --- | --- | --- |
-| [0006](../work/0006-factory-cli/) | First product: the factory CLI (`factory status` / `factory check`) — the loop already exists for specs/implementation/review/testing; this proves it on product code | T2 (release cut rides) | Active |
+| [0006](../work/0006-factory-cli/) | First product: the factory CLI (`factory status` / `factory check`) — the loop already exists for specs/implementation/review/testing; this proves it on product code | T2 (release cut rides) | Done — released in [factory-cli-v0.4.0](https://github.com/Siergus93/darkest-day/releases/tag/v0.4.0), merged via PR #8 |
 | [0007](../work/0007-release-lane/) | Deployment lane: G6a `artifact.immutable` skeleton — tag → checksummed artifact → GitHub Release; the first droppable product artifact | T2 | Done — released as [factory-cli-v0.4.0](https://github.com/Siergus93/darkest-day/releases/tag/v0.4.0) |
 | [0008](../work/0008-learning-review/) | File the first A8 (seven-slice learning review); fresh-context verification becomes a recorded, checkable step — the A8's one proposed factory change, trialed for three slices | T2 | Done — merged via PR #11, fresh-context verified |
-| [0009](../work/0009-gate-debt/) | Close the verifier-flagged gate debt: pin the lane's lib modules (FU-4), harden the SAST resolver (FU-8) | T2 | Active |
+| [0009](../work/0009-gate-debt/) | Close the verifier-flagged gate debt: pin the lane's lib modules (FU-4), harden the SAST resolver (FU-8) | T2 | Done — merged via PR #12, fresh-context verified (round 1 FAIL → fixed → round 2 PASS) |
 
