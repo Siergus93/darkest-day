@@ -17,8 +17,8 @@ disagree, the model wins and this file is a defect.
 
 ## Current state
 
-- Factory version: `0.3.1` (see [`CHANGELOG.md`](CHANGELOG.md)).
-- Active slice: `work/0006-factory-cli`.
+- Factory version: `0.4.0` (see [`CHANGELOG.md`](CHANGELOG.md)).
+- Active slice: `work/0007-release-lane`.
 - Stack binding: [`adapters/stack/node-typescript.md`](adapters/stack/node-typescript.md).
 - Delivery binding: [`adapters/ci/github-actions.md`](adapters/ci/github-actions.md).
 

@@ -9,7 +9,7 @@
 | Spec | [A2](A2-spec.md) v1 · dependency: slice [0006](../0006-factory-cli/) merged |
 | Tier | T2 |
 | Tier downgrade reason | n/a |
-| Version | 1 |
+| Version | 2 (v2: paths glob corrected — `work/0007/**` never matched `work/0007-release-lane/**`; caught by G4f on the first lane run) |
 | Owner | Siergus |
 | Target release | Factory v0.4.0 — the first deployed artifact (the factory CLI) |
 
@@ -23,7 +23,7 @@ only after this is observed — `G6a` reports `wired` in `factory.config.json`.
 
 | Surface | Touched | Notes |
 | --- | --- | --- |
-| Paths / modules | `.github/workflows/**` (new release workflow), `test/**` (extend the 0004 config-status evidence table for release-lane gates), `factory.config.json` (G6a status flip AFTER observation; `activeSlice` pointer; `G6b–G6e` notes extended to say they stay `n/a` and why), `package.json` (version 0.4.0 + `bin`), `package-lock.json` (version), `CHANGELOG.md` (release cut), `AGENTS.md` (version + slice line), `work/README.md` + `work/0007/**`, `docs/backlog.md` (roadmap row) | `.github/workflows/**` and `factory.config.json` are protected → the real magic of this slice. No workflow change to the fast lane (A2 AC-8). |
+| Paths / modules | `.github/workflows/**` (new release workflow), `test/**` (extend the 0004 config-status evidence table for release-lane gates), `factory.config.json` (G6a status flip AFTER observation; `activeSlice` pointer; `G6b–G6e` notes extended to say they stay `n/a` and why), `package.json` (version 0.4.0 + `bin`), `package-lock.json` (version), `CHANGELOG.md` (release cut), `AGENTS.md` (version + slice line), `work/README.md` + `work/0007-release-lane/**` (v2 glob), `docs/backlog.md` (roadmap row) | `.github/workflows/**` and `factory.config.json` are protected → the real magic of this slice. No workflow change to the fast lane (A2 AC-8). |
 | Public contracts | `package.json` `bin` (→ `dist/cli.js`) — the product's first named surface, inside the artifact only until any registry decision |  |
 | Data / schema | none |  |
 | Configuration / secrets | workflow uses only the default `GITHUB_TOKEN` (contents write, scoped to the repo); no PAT, no external secret | Recorded in A2. |
