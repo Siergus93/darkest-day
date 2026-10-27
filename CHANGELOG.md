@@ -4,6 +4,25 @@ The factory is a product: it has a version, and material changes are recorded he
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-27
+
+### Added
+
+- Slice 0007 — the deployment lane's first gate (G6a, `artifact.immutable`): a new
+  `release` workflow, triggered only by `v*` tag pushes, builds dist from a clean
+  checkout (pinned `npm ci`, same build+test as the lane), packs
+  `factory-cli-v<version>.zip` (`dist/**` + `package.json` + `README.md`; no
+  `node_modules`, no git history), checksums it into `SHA256SUMS`, and attaches both
+  to a GitHub Release with notes mirrored from the CHANGELOG section. Assets are
+  never re-uploaded: `gh release create`/`upload` fail loudly on a pre-existing
+  release or asset — the immutability promise. The workflow prints the tag and the
+  commit SHA it built; the release is cut by the owner's tag push on merged main.
+- The factory CLI gains its first named surface: `package.json` `bin`
+  (`factory` → `dist/cli.js`), glue for the artifact.
+- The 0004 wiring-evidence table gains a release-lane shape: a gate can now be
+  pinned to a workflow file and declared step names (`G6a`), keeping
+  wired-but-unverifiable impossible; G6b–G6e stay `n/a` with recorded reasons.
+
 ## [0.3.2] — 2026-10-27
 
 ### Added

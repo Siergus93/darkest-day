@@ -1,7 +1,13 @@
 # Spec (A2)
 
 > Station S1 · Gate G1 · Each acceptance criterion is observable and has a tier of test.
-> Version 1 · Owner Siergus · 2026-10-27
+> Version 2 · Owner Siergus · 2026-10-27
+>
+> v2: the pack list gains `scripts/ci/lib/*.mjs` (+ `package-lock.json` for `npm ci`
+> in the artifact? no — the artifact is dependency-free). The local pack dry-run
+> (A4 step 3) proved `dist/cli.js` cannot run standalone without the shared engines
+> it imports. The archive therefore mirrors the repo layout it needs:
+> `dist/**` + `scripts/ci/lib/**` + `package.json` + `README.md`.
 
 ## Problem being solved
 
@@ -19,10 +25,15 @@ only on `v*` tag pushes):
    only and does NOT re-run the full lane — the lane already greened the PR that produced
    the tag, and re-running it on a duplicated checkout cannot strengthen that evidence;
    `npm test` is enough to fail-loud on a broken tree, and it keeps the runner small.
-2. **Pack** — assemble `factory-cli-v<version>` archive: `dist/**` + `package.json`
-   (name/version/bin) + `README.md` (the repo has no LICENSE file; one is added by a
-   later slice before any third-party distribution decision). Contents list fixed in
-   the workflow; no `node_modules`, no secrets, no git history. The `bin` value in
+2. **Pack** — assemble `factory-cli-v<version>` archive: `dist/**` +
+   `scripts/ci/lib/*.mjs` (v2: the shared engines the CLI imports at runtime; the
+   pack dry-run proved the artifact is not self-contained without them —
+   `dist/cli.js` imports `../scripts/ci/lib/*.mjs`, and the packed layout preserves
+   every relative specifier, including the engines' own `../../../dist/tiers.js`)
+   + `package.json` (name/version/bin) + `README.md` (the repo has no LICENSE file;
+   one is added by a later slice before any third-party distribution decision).
+   Contents list fixed in the workflow; no `node_modules`, no secrets, no git history.
+   The `bin` value in
    `package.json` (`factory` → `dist/cli.js`) is this slice's only product-facing
    contract, added as glue for the artifact.
 3. **Checksum** — `SHA256SUMS` for the archive.
