@@ -6,6 +6,18 @@ The factory is a product: it has a version, and material changes are recorded he
 
 ### Added
 
+- Slice 0004 — automated config-status check: `test/config.test.mjs` pins every
+  `status: "wired"` gate in `factory.config.json` to its wrapper files and lane rows
+  (both directions), enforces the status vocabulary, and checks `factoryVersion`
+  against the newest released CHANGELOG section and `activeSlice` against its A4.
+  A `.gitattributes` (`* text=auto eol=lf`) makes every checkout byte-identical on
+  all platforms, closing the Windows `core.autocrlf` CRLF drift that broke the FORMAT
+  gate on fresh checkouts.
+
+## [0.3.0] — 2026-10-27
+
+### Added
+
 - Slice 0003 — fast-gate debt closed. `FORMAT` and `LINT` (Biome 2), `SAST`
   (ESLint 9 with `@microsoft/eslint-plugin-sdl` 1.1.0 + `eslint-plugin-security`),
   `HISTORY` (the repo-owned ruleset over full `git log -p --all` history), and a
