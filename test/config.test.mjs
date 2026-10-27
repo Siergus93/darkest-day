@@ -116,11 +116,17 @@ test("every lane row a wired gate declares appears in the fast lane", () => {
   assert.deepEqual(missing, [], `Wired gates with missing lane rows: ${missing.join(", ")}`);
 });
 
-test("factoryVersion matches the newest released CHANGELOG section", () => {
+test("factoryVersion matches the newest released CHANGELOG section and package.json", () => {
   const config = loadConfig(repoRoot);
   const changelog = readFileSync(path.join(repoRoot, "CHANGELOG.md"), "utf8");
   const newestReleased = changelog.match(/^## \[(\d+\.\d+\.\d+)\]/m)?.[1];
   assert.ok(newestReleased, "CHANGELOG.md has no released version section (## [x.y.z])");
+  const packageJson = JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+  assert.equal(
+    packageJson.version,
+    newestReleased,
+    `package.json version (${packageJson.version}) must match the newest released CHANGELOG section (${newestReleased})`,
+  );
   assert.equal(
     config.factoryVersion,
     newestReleased,

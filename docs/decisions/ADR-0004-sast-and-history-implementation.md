@@ -105,6 +105,89 @@ disagreeing with the self-rolled history scan.
 > "SAST wired" as literal-argument coverage is wrong; literal-command execution is part
 > of slice 0004's FU-2 coverage decision in the slice plan.
 
+## Amendment 2026-10-27 (slice 0005): literal-argument coverage decided — widen
+
+**Context.** The rider above remained only a note; the gate row still claimed unqualified
+coverage while an injected `child_process.exec("node --version")` sailed through as PASS.
+Slice 0005 probed the stock options first, per its A2 preference order:
+
+- Probe 1: no rule in `@microsoft/eslint-plugin-sdl` 1.1.0 covers command execution
+  (`no-msapp-exec-unsafe` is the only exec-adjacent rule, and it is browser-only).
+- Probe 2: `eslint-plugin-security` 4.2.0's own `detect-child-process` source shows the
+  non-literal requirement is structural (`isStaticExpression` early-returns); no
+  configuration flag exists. Every dynamic import style I probed (named, aliased, default,
+  namespace, require member, require destructure) IS covered by it; every literal shape is
+  silent — the exact hazard the rider named, in both ESM and CJS shapes.
+- Probe 3 (why not the core rules, verified empirically): `no-restricted-imports` with
+  `importNames` catches the named-import forms including aliases — but not the
+  default-import member form (`import proc from "node:child_process"; proc.exec("…")`:
+  there is no stable binding name to restrict). `no-restricted-properties` was probed on
+  that shape and returned zero findings: it binds to the object identifier's name, so any
+  alias-bound import bypasses it (verified in the slice's probe harness). A combination of
+  both still leaves the member shape silently uncovered.
+
+**Decision (continues Option 1).** Widen by adding a repository-owned local rule,
+`factory/literal-command-exec` (in `scripts/ci/eslint-rules/index.mjs`, wired into
+`eslint.config.mjs`, level `error`): a `child_process` exec-family call
+(`exec`, `execFile`, `execSync`, `execFileSync`) whose first argument is a **raw command
+string** — a string literal or a template literal — fails the gate, resolving aliasing via
+scope analysis so `import { exec as e }` cannot bypass. Templates count as raw commands
+even with statically-known interpolation: a template with statically-known parts is
+effectively a literal and would otherwise escape both rules (the non-literal rule treats
+statically-known content as static and stays silent).
+
+**Known edges, accepted and recorded:**
+- Binary string concatenation (`exec("a" + b)` where `b` is statically known) is treated as
+  dynamic by both rules and escapes exactly as it did before this amendment. Practically
+  unreachable in this repo today (zero `exec`-family usage pre-slice). Registration as
+  backlog row possible at the next verification.
+- Bare identifiers that do not resolve to a child_process import are not flagged (a
+  repository-local `exec`-named helper may exist with its own semantics); tightening that
+  is a different decision.
+- `spawn`/`spawnSync` with argument arrays remain sanctioned and uncovered (the repo's only
+  `child_process` usage).
+
+**Consequence:** the G4b SAST row's "clean" now means both shapes of command execution;
+the gate notices it by the ADR's definition — `test/sast-literal.test.mjs` pins the whole
+coverage matrix (11 fixtures covering named/aliased/default/namespace/require-member/
+require-destructure, literal + template + dynamic + spawn-clean), and the SAST wrapper
+prints the decided coverage on every PASS so a reader of the row needs no ADR.
+
+## Amendment 2026-10-27 (slice 0005, v2): the exec family is banned unconditionally
+
+The fresh-context verification of slice 0005 (recorded in
+[0005 A5](../../work/0005-sast-literal-coverage/A5-evidence-pack.md)) falsified the
+"raw-command" rule above with escape shapes the first implementation and the stock plugin
+both missed:
+
+- **V7 — dead-literal via dynamic import:** `const { exec } = await
+  import("node:child_process"); exec("rm -rf /")` — the factory rule resolved only static
+  imports and `require()` destructures, and the stock plugin's `getImportAccessPath` does
+  the same, so both stayed silent. exit 0 on the whole lane.
+- **Computed member:** `cp["exec"]("rm -rf /")` — the plugin treats computed members as
+  unresolvable; the v1 rule skipped them.
+- **Non-`exec` family, dynamic args:** `execFileSync(nodePath, ["--x"])` is silent — the
+  plugin reports only when the resolved method name is exactly `exec` (source-verified:
+  `if (fnName !== 'exec') return;`). The v1 scope note over-claimed this coverage.
+
+**Decision v2 (same vehicle, wider ban).** The factory rule is simplified to BAN
+UNCONDITIONALLY: any resolved exec-family call fails, whichever of the shapes above carri­ed
+it (member including computed, import including aliases, require-destructure, await-import
+destructure). Rationale: argument-classification cannot be made sound across string-building
+shapes (the binary-concat edge below proved it, and the plugin's own staticness logic
+proves how many edge classes exist), while `spawn`/`spawnSync` with argument arrays is the
+sanctioned pattern and the repo's only usage — there is no legitimate exec-family call to
+protect, and a class-wide ban cannot be re-opened by an argument edge. The
+`security/detect-child-process` rule stays as an independent second opinion over
+bare-`exec` dynamic calls, and the SAST scope note now states only what is true.
+
+**Known edges (closed by v2, recorded for the record):** statically-known binary
+concatenation (`exec("a" + "b")`) now fails; the plugin's static template behavior and the
+computed-member gap become unreachable. The only deliberate clean areas are `spawn`/
+`spawnSync` with argument arrays and exec-family-named identifiers that do not resolve
+to child_process (a repository-local helper may have its own semantics; tightening that
+needs a different decision).
+
 ## Links
 
 - Problem brief: [0003 A1](../../work/0003-fast-gate-debt/A1-problem-brief.md)

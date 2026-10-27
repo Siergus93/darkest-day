@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "factoryVersion": "0.3.0",
+  "factoryVersion": "0.3.1",
   "owner": "Siergus",
   "activeSlice": "work/0005-sast-literal-coverage",
   "lanes": {
@@ -118,7 +118,7 @@
       "ports": ["format.check", "lint.check", "type.check", "sast"],
       "status": "wired",
       "smokeTested": true,
-      "notes": "Each of the four ports is separately invocable and was observed failing on an injected defect (type TS2322; unformatted file; noDoubleEquals; child_process.exec fixture) and green after restore."
+      "notes": "Each of the four ports is separately invocable and was observed failing on an injected defect (type TS2322; unformatted file; noDoubleEquals; child_process.exec fixture) and green after restore. SAST coverage decided in slice 0005 / ADR-0004 amendment: the child_process exec family is banned on raw commands (literal or template); dynamic commands covered by security/detect-child-process; spawn/spawnSync with argument arrays is the sanctioned pattern."
     },
     {
       "id": "G4c",
