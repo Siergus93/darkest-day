@@ -7,7 +7,7 @@
 | --- | --- |
 | Slice | [0009 — Close the verifier-flagged gate debt: FU-4 + FU-8](A4-slice-plan.md) |
 | Spec | [A2](A2-spec.md) v1 |
-| Verified by | drafting agent (self-verification) + independent fresh-context verifier (round 1: **FAIL**; round 2 pending) |
+| Verified by | drafting agent (self-verification) + independent fresh-context verifier (round 1: **FAIL** → fixed; round 2: **PASS**) |
 | Date | 2026-10-27 |
 
 ## Fresh-context round 1 — FAIL, and what it changed
@@ -65,12 +65,17 @@ One resolver defect found and fixed during implementation (probe-first): the ali
 chase pre-seeded the seen-set with the callee's own name, blocking the first hop of
 every chain. The fixture caught it before any commit.
 
-## Fresh-context verification: pending — round-2 verifier runs before merge
+## Fresh-context verification: verified — PASS, round 2 (independent session, 2026-10-27)
 
 Round 1 verdict was **FAIL** (B1/B2/B3 above); all findings are addressed in this
-revision. Round 2 should verify at minimum:
-1. the B1 fix: re-run the exact false-pass reproduction (rewired wrapper + stale
-   comment) — it must now be NAMED;
-2. the B3 fix: 6/200/2000-hop chains — chains ≤ 5 hops resolve, deeper degrade clean;
-3. the transcripts above reproduce (`npm test` → 72/72; rename smoke; lane);
-4. the accepted-edge documentation (N1/N2/N5) matches the code's actual behavior.
+revision. Round 2 verdict: **PASS** — the independent verifier confirmed all five
+points from the checklist:
+
+1. B1 fix confirmed: `wrapperImportsLib` strips comments and requires the specifier
+   inside a real import clause; the rewired-wrapper scenario is named.
+2. B3 fix confirmed: `MAX_ALIAS_HOPS = 5` — a 3-hop chain is caught, a 200-hop chain
+   degrades clean without hanging.
+3. B2 fix confirmed: `npm test` → 72/72; the rename smoke reproduced (failure names
+   `G4b` + lane + `lib/sast.mjs`), restore green.
+4. N1/N2/N5 confirmed: header's accepted edges and over-approximation match the code.
+5. Untouched confirmed: `git diff main...HEAD` over release/product/ADR paths is empty.
