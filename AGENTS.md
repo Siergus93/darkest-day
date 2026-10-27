@@ -18,7 +18,7 @@ disagree, the model wins and this file is a defect.
 ## Current state
 
 - Factory version: `0.4.0` (see [`CHANGELOG.md`](CHANGELOG.md)).
-- Active slice: `work/0007-release-lane`.
+- Active slice: `work/0008-learning-review`.
 - Stack binding: [`adapters/stack/node-typescript.md`](adapters/stack/node-typescript.md).
 - Delivery binding: [`adapters/ci/github-actions.md`](adapters/ci/github-actions.md).
 

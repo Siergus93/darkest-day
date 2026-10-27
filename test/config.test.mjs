@@ -233,3 +233,59 @@ test("activeSlice names an existing slice directory with an A4 plan", () => {
     `activeSlice (${config.activeSlice}) must point at a slice directory containing A4-slice-plan.md`,
   );
 });
+
+/**
+ * Fresh-context verification, made checkable (slice 0008, from the first A8's
+ * proposed change): the active slice's A5 must carry a `Fresh-context
+ * verification:` record. The machine checks existence; the human reviewer
+ * checks content ("pending: verifier runs before merge" is honest while the
+ * PR is open, not after it merges). Enforcement is forward-looking by
+ * construction — only the active slice is checked, so historical slices are
+ * never re-run.
+ */
+const FRESH_CONTEXT_MARKER = "Fresh-context verification:";
+
+function freshContextVerdict(root, sliceDir) {
+  const a5Path = path.join(root, sliceDir, "A5-evidence-pack.md");
+  if (!existsSync(a5Path)) {
+    return { verdict: undefined, a5Path };
+  }
+  const source = readFileSync(a5Path, "utf8");
+  const line = source.split(/\r?\n/).find((candidate) => candidate.includes(FRESH_CONTEXT_MARKER));
+  return { verdict: line, a5Path };
+}
+
+test("the active slice's A5 records a fresh-context verification field", () => {
+  const config = loadConfig(repoRoot);
+  const { verdict, a5Path } = freshContextVerdict(repoRoot, config.activeSlice);
+  assert.ok(
+    verdict !== undefined,
+    `${path.relative(repoRoot, a5Path)} must contain a "${FRESH_CONTEXT_MARKER}" record — ` +
+      '"pending: verifier runs before merge" is allowed while the PR is open',
+  );
+  assert.match(
+    verdict,
+    /pending|verdict|PASS|FAIL|verified by/i,
+    `the fresh-context record must state a status, not be empty after the marker:\n  ${verdict}`,
+  );
+});
+
+test("the pull request template demands a fresh-context verification record", () => {
+  const template = readFileSync(path.join(repoRoot, ".github/pull_request_template.md"), "utf8");
+  assert.ok(
+    template.includes(FRESH_CONTEXT_MARKER),
+    "the PR template's Evidence section must contain a mandatory fresh-context field",
+  );
+  assert.match(
+    template,
+    /pending/i,
+    "the field must allow an honest pending state while the PR is open",
+  );
+});
+
+test("the fresh-context check fails closed on a missing field (synthetic fixture)", (t) => {
+  const root = createTempDir(t);
+  write(root, "work/000x-synthetic/A5-evidence-pack.md", "# Evidence pack (A5)\n\nno field here\n");
+  const missing = freshContextVerdict(root, "work/000x-synthetic");
+  assert.equal(missing.verdict, undefined, "a missing field must be detected");
+});

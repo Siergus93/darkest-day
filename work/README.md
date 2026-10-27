@@ -13,6 +13,8 @@ records live in [`../docs/decisions/`](../docs/decisions/) because they outlive 
 | [0005](0005-sast-literal-coverage/) | SAST coverage: literal-argument command execution | T2 | S6 — release | [A5](0005-sast-literal-coverage/A5-evidence-pack.md) (merged via PR #7, fresh-context verified) |
 | [0006](0006-factory-cli/) | First product: the factory CLI (`factory status` / `factory check`) | T2 | S6 — release | [A5](0006-factory-cli/A5-evidence-pack.md) (merged via PR #8) |
 | [0007](0007-release-lane/) | Deployment lane: G6a `artifact.immutable` skeleton | T2 | S6 — release | [A5](0007-release-lane/A5-evidence-pack.md) · [A6](0007-release-lane/A6-release-record.md) (factory-cli-v0.4.0, first deployed artifact) |
+| [0008](0008-learning-review/) | File the first A8; fresh-context verification becomes a recorded, checkable step | T2 | S4 — build | pending |
+| — | First A8 (review of the 0001 bet, filed by 0008) | — | S8 — learn | [A8](0001-enforce-phase-0/A8-learning-review.md) |
 
 Update the row when a gate passes, not when work starts. The convention is defined in
 [`../docs/software-factory/08-artifacts.md`](../docs/software-factory/08-artifacts.md).
