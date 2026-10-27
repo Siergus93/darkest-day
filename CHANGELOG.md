@@ -4,7 +4,24 @@ The factory is a product: it has a version, and material changes are recorded he
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-10-27
+
 ### Added
+
+- Slice 0005 — the SAST gate's coverage decision (FU-2). A local rule
+  (`factory/literal-command-exec`, in `scripts/ci/eslint-rules/`) joins the pack:
+  the `child_process` exec family (`exec`, `execFile`, `execSync`, `execFileSync`)
+  is banned on raw commands — literal or template — closing the literal-argument
+  hole where `exec("…")` sailed through as PASS. Dynamic commands stay covered by
+  `security/detect-child-process`. `spawn`/`spawnSync` with argument arrays remains
+  the sanctioned pattern (and the repo's only `child_process` usage). Decision and
+  coverage matrix recorded in the ADR-0004 amendment and provable in
+  `test/sast-literal.test.mjs`. The SAST wrapper output and the G4b factory note
+  now state the decided coverage on every PASS. FU-5 closes here: `package.json`
+  is the third leg of the version-coherence assertion (version == `factoryVersion`
+  == newest released CHANGELOG section).
+
+### Added (planning)
 
 - Slice 0005 prepared (S3): A1/A2/A4 for the SAST literal-argument coverage decision
   (FU-2) — probe-first, decide widen-vs-boundary, record in an ADR-0004 amendment;

@@ -7,6 +7,9 @@ const result = await scanSast(repoRoot);
 
 if (result.errors.length === 0) {
   console.log(`sast: no security rule violations (${result.warnings.length} warning(s)).`);
+  console.log("  scope: ADR-0004 - child_process exec family (exec, execFile, execSync,");
+  console.log("  execFileSync) banned on raw commands (literal or template); dynamic commands");
+  console.log("  are covered by security/detect-child-process.");
   for (const row of result.warnings) {
     console.log(`  ${row}`);
   }
