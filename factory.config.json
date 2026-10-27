@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "factoryVersion": "0.2.0",
+  "factoryVersion": "0.3.0",
   "owner": "Siergus",
-  "activeSlice": "work/0003-fast-gate-debt",
+  "activeSlice": "work/0004-config-status-check",
   "lanes": {
     "fast": {
       "trigger": "every change",

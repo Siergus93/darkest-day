@@ -17,8 +17,8 @@ disagree, the model wins and this file is a defect.
 
 ## Current state
 
-- Factory version: `0.2.0` (see [`CHANGELOG.md`](CHANGELOG.md)).
-- Active slice: `work/0002-vcs-faithful-diff`.
+- Factory version: `0.3.0` (see [`CHANGELOG.md`](CHANGELOG.md)).
+- Active slice: `work/0004-config-status-check`.
 - Stack binding: [`adapters/stack/node-typescript.md`](adapters/stack/node-typescript.md).
 - Delivery binding: [`adapters/ci/github-actions.md`](adapters/ci/github-actions.md).
 
@@ -40,8 +40,9 @@ disagree, the model wins and this file is a defect.
 
 - Do not change `factory.config.json`, `scripts/ci/**`, `.github/**`, or `adapters/**`
   without expecting T2. They are protected because they can silently weaken verification.
-- The blast radius for the active slice is in `work/0001-enforce-phase-0/A4-slice-plan.md`.
-  A new scope is a return to S1/S3, not an edit to the current diff.
+- The blast radius for the active slice is in its `A4-slice-plan.md` under `work/` (find it
+  via `factory.config.json` → `activeSlice`). A new scope is a return to S1/S3, not an edit
+  to the current diff.
 - Do not edit an accepted ADR. Supersede it with a new record.
 - Do not edit a signed A5. Add a review finding or a new version of the artifact it verified.
 

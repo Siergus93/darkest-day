@@ -4,6 +4,8 @@ The factory is a product: it has a version, and material changes are recorded he
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-27
+
 ### Added
 
 - Slice 0003 — fast-gate debt closed. `FORMAT` and `LINT` (Biome 2), `SAST`
