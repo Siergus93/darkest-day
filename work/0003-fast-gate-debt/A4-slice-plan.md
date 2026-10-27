@@ -9,7 +9,7 @@
 | Spec | [A2](A2-spec.md) v2; per [ADR-0003](../../docs/decisions/ADR-0003-gate-tools.md); [ADR-0004](../../docs/decisions/ADR-0004-sast-and-history-implementation.md) supersedes the SAST and history-scan tool choice |
 | Tier | T2 |
 | Tier downgrade reason | n/a |
-| Version | 3 |
+| Version | 4 |
 | Owner | Siergus |
 | Target release | Factory v0.3.0 (unreleased) |
 
@@ -95,6 +95,16 @@ tree deterministically on both platforms", so installation/finding is first.
 | the repo-owned history scanner false positives on the repo's existing text | Rollback path is an allow-list entry, gated by the scratch-commit smoke; recovery is documented | The probe in AC-6 |
 | Lane wall-clock drift | Timing is an AC with a numeric target (AC-4/AC-6); regression is visible in every A5 | Timing table |
 | `activeSlice` staging | Handled by making step 8 explicit instead of implicit | The lane's `G4f` row names the wrong slice on the lane summary |
+
+## Follow-ups registered at verification (2026-10-27)
+
+> Registered by the fresh-context verifier from A5 findings; each is a new slice
+> (A1→A5), it does not reopen slice 0003.
+
+| ID | Item | Why it matters | Where | When |
+| --- | --- | --- | --- | --- |
+| FU-1 | Build the automated config-status check AC-7 promised | AC-7's hazard — gate statuses drifting from actual observations — is currently guarded only by review; A4 v3 named a `test/config.test.mjs` update as the evidence location, but the shipped test change is import-reorder only. The statuses are factually correct as verified by hand (A5 AC-7); the machine-enforced version is this follow-up | `test/config.test.mjs` asserting `factory.config.json` G4b/G4d/G4e statuses against gate shapes (T1) | Next |
+| FU-2 | Decide SAST coverage for literal-argument command execution | `security/detect-child-process` fires only on non-literal first arguments, verified in A5 smoke 3: a literal `exec("rm -rf …")` sails through. ADR-0004 amendment (2026-10-27) records that "SAST wired" does not mean literal coverage. The gate stays as-is until this slice either widens the rule (custom ESLint rule or an SDL rule) or records the decided coverage boundary (T2) | `eslint.config.mjs`; `scripts/ci/sast.mjs` scope note | Next |
 
 ## Review budget
 

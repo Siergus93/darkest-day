@@ -177,7 +177,12 @@ https://github.com/Siergus93/darkest-day/actions/runs/40411763604/job/1218839707
 
 ## Residual risk / follow-ups
 
-- AC-7's promised config-status test is not automated (see AC-7 note).
+Both verification findings are registered as FU-1 and FU-2 in
+[A4 v4 — Follow-ups registered at verification](A4-slice-plan.md), and reproduced above:
+
+- FU-1: the automated AC-7 config-status check is not built (see AC-7 note).
+- FU-2: literal-argument child-process execution is outside SAST coverage (see smoke 3);
+  recorded as an amendment rider on [ADR-0004](../../docs/decisions/ADR-0004-sast-and-history-implementation.md).
 - Gate summary rows for format, lint, SAST, audit, and history are only ever PASS/FAIL
   (no PARTIAL) — verified by inspection of `scripts/ci/fast.mjs` AND its green/failed runs.
 - AGENTS.md "Current state" still names slice 0002 as active; `factory.config.json` is

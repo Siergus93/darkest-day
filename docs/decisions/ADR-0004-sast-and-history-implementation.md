@@ -98,6 +98,13 @@ record's own falsifier); a Node.js/ESLint upgrade breaking the SDL plugin; the r
 gaining a non-JS surface where SDL rules don't apply; a second permanent maintainer
 disagreeing with the self-rolled history scan.
 
+> Amendment 2026-10-27 (rider, from A5 verification of slice 0003; the body above is
+> unchanged): `security/detect-child-process` fires only on **non-literal** first
+> arguments — `exec("…" with a literal string)` produces no finding (verified in
+> [0003 A5 smoke 3](../../work/0003-fast-gate-debt/A5-evidence-pack.md)). Reading
+> "SAST wired" as literal-argument coverage is wrong; literal-command execution is part
+> of slice 0004's FU-2 coverage decision in the slice plan.
+
 ## Links
 
 - Problem brief: [0003 A1](../../work/0003-fast-gate-debt/A1-problem-brief.md)
