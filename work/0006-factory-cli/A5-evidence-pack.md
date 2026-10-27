@@ -24,7 +24,7 @@
 | AC-6 --help + unknown-arg exit 1 | PASS | hand-run: `node dist/cli.js --bogus` → exit 1, stderr names `--bogus` and prints usage. Unit: "--help exits 0 for the top level and both commands" ✔ and "an unknown argument exits 1 naming the argument" ✔ (both `--bogus` and unknown command `deploy`) |
 | AC-7 lane green, lockfile version-only | PASS | `npm run fast -- --base db92084` → **Fast lane PASSED in 26.8s** (all 12 gate rows PASS, 64/64 tests). `git diff --stat package-lock.json` → `4 ++--` (both `version` fields only) |
 | AC-8 three-way version agreement + pointer | PASS | `test/config.test.mjs` "factoryVersion matches the newest released CHANGELOG section and package.json" ✔ and "activeSlice names an existing slice directory with an A4 plan" ✔ — 0.3.2 == 0.3.2 == [0.3.2], `activeSlice: work/0006-factory-cli` |
-| AC-9 CI on PR exits 0 | PENDING | to be observed on the PR (Run URL to be appended before merge) |
+| AC-9 CI on PR exits 0 | PASS | PR [#8](https://github.com/Siergus93/darkest-day/pull/8) — fast lane check passed: https://github.com/Siergus93/darkest-day/actions/runs/40570668063/job/122423664326 |
 
 ## Working-tree smoke 1 (protected path, real tree, verbatim)
 
