@@ -53,7 +53,7 @@ static expressions.
 
 The fresh-context verification returned **FAIL** with three escape shapes the v1 "raw-command"
 rule and the stock plugin both missed (see the verifier section below): top-level
-`await import()` destructure (V7), computed member `cp["exec"](...)`, and non-`exec` family
+`await import()` destructure (V7), computed member `cp["exec"] (…)`, and non-`exec` family
 methods with dynamic args (the stock plugin covers only bare `exec` dynamically). Rather
 than enumerate shapes, the decision was simplified per ADR-0004 amendment v2: **the exec
 family is banned unconditionally** — any resolved exec-family call fails, whichever shape
@@ -271,4 +271,111 @@ genuinely closed — but the headline claim ("the gate now covers literal-argume
 execution") is falsified by V7 and the PASS-row wording is wrong, so the slice cannot be
 countersigned PASS as shipped.
 
-VERDICT: FAIL — the four pin-test fixture shapes pass and the version chain holds, but a literal-argument `exec` via top-level `await import()` escapes the gate entirely (probe V7) and the printed scope note overstates the `detect-child-process` coverage (only `exec`, not the other three methods); the rule must close FU-6 (and AC-5's wording after FU-7) before this slice's claim is true.
+VERDICT (v1): FAIL — the four pin-test fixture shapes pass and the version chain holds, but a literal-argument `exec` via top-level `await import()` escapes the gate entirely (probe V7) and the printed scope note overstates the `detect-child-process` coverage (only `exec`, not the other three methods); the rule must close FU-6 (and AC-5's wording after FU-7) before this slice's claim is true.
+
+## Re-verification of the fix round (2026-10-27, same verifier)
+
+The implementer responded with a simplification (ADR-0004 amendment v2): the exec family is
+banned unconditionally, arguments are not classified at all; the resolver gained
+`await import()` destructures, aliased destructures, and computed member access with a
+literal string property. Re-verified independently below.
+
+### Probe verdicts (all through the real wrapper `node scripts/ci/sast.mjs`, scratch files `scripts/_verify0005r-*.mjs`, deleted after each record)
+
+| Probe | Shape | v1 result | v2 result |
+| --- | --- | --- | --- |
+| V7 exactly | `const { exec } = await import("node:child_process"); exec("rm -rf /")` | EXIT=0 (hole) | **EXIT=1**, rule id + file:line |
+| Aliased dynamic import | `const { exec: e } = await import(...); e("rm -rf /")` | untested in v1 | **EXIT=1** |
+| Computed member | `import cp from ...; cp["exec"]("x")` | EXIT=0 (hole) | **EXIT=1** |
+| Non-exec family, dynamic arg | `const f = process.argv[2]; execFile(f, ["--x"])` | EXIT=0 (hole) | **EXIT=1** (`child_process.execFile()`) |
+| Static binary concat | `exec("node --ver" + "sion")` | EXIT=0 (documented edge) | **EXIT=1** (closed) |
+| Green control | clean tree | scope note over-claimed | EXIT=0; note now says only what is true: "banned unconditionally; spawn/spawnSync with an argument array is the sanctioned pattern; detection of non-literal exec() on static imports remains with security/detect-child-process as a second opinion" — matches the plugin source (exec-only fnName), no over-claim |
+
+`npm test` → 56/56 including the 17-fixture matrix (now includes namespace, require-destructure,
+both `await import` variants, computed member, static concat, member-alias spawn). Lane after
+all restores: all gates PASS, 14 changed path(s), EXIT=0.
+
+### New bypass hunt (v2 rule, lint-harness through the real `eslint.config.mjs`)
+
+```
+N1  alias-of-namespace m = require("node:child_process"); m["ex" + "ec"](dynamicArg) => []   ← silent
+N2  same, literal arg                                                         => []   ← silent
+N3  cp[key](...) with key from JSON-parsed argv (runtime key)                 => []   ← silent
+N4  re-require inside a function, member call, dynamic arg                    => [factory/literal-command-exec]  (covered)
+N5  re-destructure of the module object: const { execSync: es } = req;        => []   ← silent (resolver is single-hop)
+    es(dynamicArg)
+N7  await-import member: cps.execFileSync(process.argv[2], ["-c"])            => [factory/literal-command-exec]  (covered)
+N12 alias-of-namespace static concat: cpMod.exec("node --ver" + "sion")       => [factory/literal-command-exec]  (covered)
+V6' `const { exec } = await import(`node:${"child_process"}`)` template-       => []   ← silent (module-specifier must be a string Literal)
+    literal specifier; exec("rm -rf /")        [verified through the real wrapper, EXIT=0]
+```
+
+Honest classification of the silent shapes:
+
+1. **N3 (runtime-derived member key) is not coverable by ANY AST rule in principle** — the
+   method is chosen at runtime; no static analysis can name it without over-blocking all
+   dynamic member dispatch. Not a demand; accepted edge. **However the ADR v2 "Known edges"
+   does not record it, and the rationale sentence "a class-wide ban cannot be re-opened by an
+   argument edge" is accurate as written (this is a *member-access* edge, not an argument
+   edge) but reads as a completeness guarantee — the wording should name the dynamic-property
+   edge next to it.** Wording finding, not a coverage defect today.
+2. **N1/N2 (static-foldable computed property on a module alias) are coverable in principle**
+   (constant folding of `"ex" + "ec"`; or over-blocking any computed member whose property is
+   not a string literal on a child_process-resolved binding). v2 leaves them silent. Real,
+   but requires deliberately obfuscated code; registered as FU-8 (below) rather than demanded.
+3. **N5 (re-destructure of an already-imported module object) is a single-hop resolver limit,
+   coverable by transitive resolution**; same materiality class as N1/N2 → FU-8.
+4. **V6' (template-literal module specifier) is a static shape currently out of the
+   Literal-only source check**; trivially closable — part of FU-8.
+5. **N4/N7/N12 confirm the resolver's new shapes genuinely work** (function-scope re-require,
+   await-import member call with non-literal args, alias static concat).
+
+`Object.defineProperty`/proxy/`globalThis`-pocket trickery: outside any AST rule's reach in
+principle (runtime property injection); not registered. A runtime monkey-patch audit would be
+a different, non-SAST decision — mentioning for completeness only.
+
+### spawn single-shell-string question (finding, proposed — NOT implemented)
+
+The ADR sanctions `spawn`/`spawnSync` **with argument arrays** and the 17-fixture matrix pins
+`spawnSync("git", ["status"])` and `cp.spawn("git", ["status"])` as clean. Neither the ADR nor
+the rule says anything about the single-argument shell-string forms, probed above:
+
+- N8/N9 `spawn(`git checkout ${br}`)` / `spawnSync(...)` single template arg → silent.
+  Node's default (`shell: false`) does not invoke a shell here — the string is passed as a
+  command name — so this is materially lower hazard than `exec` class: accepted edge, but it
+  is *outside* the sanctioned pattern and undocumented.
+- N10 `spawn("git checkout " + br, { shell: true })` with a concatenated dynamic string →
+  silent. With `shell: true` this IS shell injection, exec-equivalent by construction. Today
+  the repo has zero spawn usage at all, so nothing is exposed; but the sanctioned-pattern
+  wording ("spawn with argument arrays") and the v2 claim of an unconditional exec ban both
+  stay silent about the shell-true form.
+
+**Registered as FU-9 (docs/backlog.md row + should join the next ADR touch):** when the repo
+or a downstream stack adopts `spawn`, add a rule row flagging (a) `spawn`/`spawnSync` whose
+first argument is a template literal or binary concat in single-string form, and (b) any
+`spawn(..., { shell: true })` whose command argument is not a plain string literal. Rationale:
+both are exec-class hazards carried across the sanctioned boundary; the current ban's
+"unconditional" completeness claim should not silently assume they are covered.
+
+### Findings (fix round)
+
+1. V7, aliased dynamic import, computed member, non-exec dynamic args, static concat: all
+   previously falsifying probes now fail the gate as claimed. **Probe verdict: PASS** on all six.
+2. Scope note wording now true against the plugin source. **PASS** on AC-5 wording.
+3. ADR v2 wording: "class-wide ban cannot be re-opened by an argument edge" is accurate but
+   incomplete — dynamic-property member access (N3) re-opens it by a *member* edge and is not
+   in the Known-edges list; N1/N2/N5/V6' are static but unresolved. Add one Known-edges
+   bullet naming the dynamic-property edge and referencing FU-8/FU-9 at the next ADR touch.
+4. Gate artifact: the Fix-round prose `cp["exec"](...)` was parsed as a Markdown reference
+   link and failed LINKS on CI (run 40483722905); reworded in this commit (`cp["exec"] (…)`),
+   LINKS PASS, lane re-run green. Inline-code spans are otherwise linted-looking code — the
+   checker excludes fenced blocks only, which is why the earlier inline code tripped it.
+5. FU-6 and FU-7 are registered closed in `docs/backlog.md` with accurate one-line rationales.
+
+The name of the game here is stated scope: v2 declares "resolved exec-family calls fail,
+unconditionally" — every statically-resolvable shape I could construct resolves and fails;
+what remains silent is exactly the classes the ADR now names or that FU-8/FU-9 carry. The
+simplification made the rule smaller (no argument classification) while strictly enlarging
+coverage — verified empirically at every previously-falsifying point.
+
+VERDICT: PASS — all six previously-falsifying probes now fail the gate, the scope note states only what is true, the 17-fixture matrix pins the previously-escaping shapes, and the silent survivors (runtime member keys, multi-hop alias rebinding, template module specifiers, single-string spawn) are static/obfuscation-class residuals registered as FU-8/FU-9 with an ADR wording note, not holes in the declared claim.
