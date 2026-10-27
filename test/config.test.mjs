@@ -30,10 +30,14 @@ const WIRED_GATE_EVIDENCE = {
    * Release-lane evidence shape (slice 0007): a gate wired by a workflow is
    * pinned to the workflow file and to step names that must appear in it.
    * Such a gate has no fast-lane row, so the lane-row test skips it.
-   * The G6a entry is added in the same commit that flips G6a to "wired" —
-   * statuses follow observations (the 0005 lesson), so this PR ships the
-   * mechanism, verified below against a synthetic entry.
+   * The G6a entry lands in the same commit that flips G6a to "wired" —
+   * statuses follow observations (the 0005 lesson): the v0.4.0 run was
+   * observed first (run 40574701583), then this row was added.
    */
+  G6a: {
+    workflows: [".github/workflows/release.yml"],
+    steps: ["Pack", "Checksum", "Attach"],
+  },
 };
 
 const KNOWN_STATUSES = new Set(["manual", "wired", "partial", "n/a"]);
