@@ -4,13 +4,31 @@ The factory is a product: it has a version, and material changes are recorded he
 
 ## [Unreleased]
 
+### Added
+
+- Slice 0003 — fast-gate debt closed. `FORMAT` and `LINT` (Biome 2), `SAST`
+  (ESLint 9 with `@microsoft/eslint-plugin-sdl` 1.1.0 + `eslint-plugin-security`),
+  `HISTORY` (the repo-owned ruleset over full `git log -p --all` history), and a
+  blocking `npm audit --audit-level=high` join the lane; `G4b`/`G4d`/`G4e` report
+  PASS/FAIL only. New commands: `npm run check:format`, `check:lint`, `check:sast`,
+  `check:secrets`, `check:secrets-history`.
+- The waiver register now lives at [`docs/waivers.md`](docs/waivers.md), per
+  08-artifacts §7; format, lint, SAST, history, and the audit waiver instance are
+  retired there, each after the gate was observed failing once and green once.
+- Decision records [ADR-0003](docs/decisions/ADR-0003-gate-tools.md) (tool choices)
+  and [ADR-0004](docs/decisions/ADR-0004-sast-and-history-implementation.md)
+  (supersedes ADR-0003's Semgrep/gitleaks clauses after the environment probe found
+  no Python and no package manager; SDL + security plugin and in-repo history
+  instead).
+
 ### Fixed
 
 - `vcs.diff` / `G4f` now evaluates one complete local change set: committed changes since
   `--base`, index changes (including index-only staged edits), unstaged tracked edits,
-  deletions, renames, typechanges, and untracked files. A base ref cannot begin with `-`.
-  The fast lane and `scripts/ci/blast-radius.mjs` both print that committed branch changes
-  are not included when no `--base` is supplied.
+  deletions, renames, typechanges, and untracked files. A base ref cannot begin with `-`,
+  and a valueless `--base` is a usage error rather than a silent no-base run.
+  The fast lane and `scripts/ci/blast-radius.mjs` both print the working-tree-only note
+  when no `--base` is supplied.
 
 ## [0.2.0] — 2026-10-23
 

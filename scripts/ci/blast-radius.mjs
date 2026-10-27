@@ -16,7 +16,9 @@ function parseArguments(argv) {
       index += 1;
     } else if (argument === "--base") {
       if (index + 1 >= argv.length) {
-        throw new Error(`--base requires a git ref; a valueless --base is a usage error, not a silent no-base run.`);
+        throw new Error(
+          `--base requires a git ref; a valueless --base is a usage error, not a silent no-base run.`,
+        );
       }
       options.base = argv[index + 1];
       index += 1;

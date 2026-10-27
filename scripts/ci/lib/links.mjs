@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { readTextFile, relativePath, walkFiles } from "./files.mjs";
 import { repoRoot } from "./config.mjs";
+import { readTextFile, relativePath, walkFiles } from "./files.mjs";
 
 const INLINE_LINK = /!?\[[^\]]*\]\(\s*(<[^>]+>|[^)\s]+)(?:\s+["'][^"']*["'])?\s*\)/g;
 const REFERENCE_DEFINITION = /^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)/;
 const FENCE_START = /^\s{0,3}(```|~~~)/;
+// eslint-disable-next-line @microsoft/sdl/no-insecure-url -- the http:// string is the scanner's own detection vocabulary, not a URL used at runtime
 const EXTERNAL_PREFIXES = ["http://", "https://", "mailto:", "tel:", "data:"];
 
 /** Approximate GitHub's heading anchors for links that point at a fragment. */
@@ -61,9 +62,7 @@ function collectDocument(markdown) {
       }
     }
 
-    INLINE_LINK.lastIndex = 0;
-    let match;
-    while ((match = INLINE_LINK.exec(line)) !== null) {
+    for (const match of line.matchAll(INLINE_LINK)) {
       links.push({ line: index + 1, target: normaliseTarget(match[1] ?? "") });
     }
 

@@ -1,9 +1,5 @@
-import {
-  readTextFile,
-  relativePath,
-  walkFiles,
-} from "./files.mjs";
 import { repoRoot } from "./config.mjs";
+import { readTextFile, relativePath, walkFiles } from "./files.mjs";
 
 /**
  * Secrets ruleset.
