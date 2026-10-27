@@ -17,7 +17,7 @@
 | AC-6 clean tree `npm test` green, added check < 1 s | **PASS (build)** | 6 new tests run in ~0.13 s (config.test.mjs duration 128.961 ms total) |
 | AC-7 `npm run fast -- --base b92ad65` green | **PASS (build)** | Lane run below |
 | AC-8 `.gitattributes`; renormalize no-op; fresh checkout is LF | **PASS (build)** | Smoke 5 below |
-| AC-9 CI on PR exits 0 | **PENDING** | Run URL to be added after push |
+| AC-9 CI on PR exits 0 | **PASS** | "fast lane" SUCCESS, 19s — https://github.com/Siergus93/darkest-day/actions/runs/40474204217/job/122088291497 (2026-10-27) |
 
 ## Incident that became AC-8
 
