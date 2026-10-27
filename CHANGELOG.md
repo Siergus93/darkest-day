@@ -4,6 +4,22 @@ The factory is a product: it has a version, and material changes are recorded he
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-10-27
+
+### Added
+
+- Slice 0006 — the factory's first product surface: the CLI (`src/cli.ts`, compiled
+  to `dist/cli.js`, stdlib only, no new dependency). `factory status` dumps the
+  manifest — factory version, active slice, and the gate catalog as
+  `<id> <tier> <status>` — and always exits 0. `factory check [--base <ref>]` prints
+  the change set and the blast-radius verdict with the same semantics as the lane's
+  G4f row (same shared engines, guarded by a parity test), exits 0 with
+  `factory check: PASS, <tier>` when clean and exit 1 naming the protected-path
+  escalation or outside-radius paths otherwise. `--help` on the top level and both
+  commands; unknown arguments exit 1 naming the argument. The CLI checks the
+  repository it is run from. No `bin` yet — slice 0007 owns the artifact and the
+  `bin` decision together.
+
 ## [0.3.1] — 2026-10-27
 
 ### Added

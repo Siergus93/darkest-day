@@ -19,4 +19,12 @@
 
 | ID | Origin | Item | When |
 | --- | --- | --- | --- |
-| FU-2 | [0003 A4 v4](../work/0003-fast-gate-debt/A4-slice-plan.md) | SAST coverage: literal-argument command execution | Slice [0005](../work/0005-sast-literal-coverage/) — active |
+| FU-2 | [0003 A4 v4](../work/0003-fast-gate-debt/A4-slice-plan.md) | SAST coverage: literal-argument command execution | Slice [0005](../work/0005-sast-literal-coverage/) — done, PR #7 merged |
+
+## Roadmap (owner decisions 2026-10-27)
+
+| Slice | Item | Tier | State |
+| --- | --- | --- | --- |
+| [0006](../work/0006-factory-cli/) | First product: the factory CLI (`factory status` / `factory check`) — the loop already exists for specs/implementation/review/testing; this proves it on product code | T2 (release cut rides) | Active |
+| [0007](../work/0007-release-lane/) | Deployment lane: G6a `artifact.immutable` skeleton — tag → checksummed artifact → GitHub Release; the first droppable product artifact | T2 | Drafted |
+
