@@ -233,9 +233,9 @@
       "tier": "T2",
       "class": "M",
       "ports": ["artifact.immutable"],
-      "status": "n/a",
-      "smokeTested": false,
-      "notes": "No deployable artifact yet."
+      "status": "wired",
+      "smokeTested": true,
+      "notes": "Release lane: a v* tag push builds dist from a clean checkout (pinned npm ci, build+test), packs factory-cli-v<version>.zip (dist + shared engines + manifest + README), checksums it into SHA256SUMS, and attaches both to a GitHub Release; assets are never re-uploaded (gh release create/upload fail loudly on pre-existence). First observed run: tag v0.4.0, run 40574701583, release commit 6a83203; checksum recompute and re-download byte-compare verified locally (A5)."
     },
     {
       "id": "G6b",
@@ -244,7 +244,7 @@
       "ports": ["config.validate"],
       "status": "n/a",
       "smokeTested": false,
-      "notes": "No runtime configuration yet."
+      "notes": "Stay n/a (slice 0007): the released artifact is dependency-free with no runtime configuration surface to validate; graduation is decided by the first real deployment that owns configuration."
     },
     {
       "id": "G6c",
@@ -253,7 +253,7 @@
       "ports": ["rollback"],
       "status": "n/a",
       "smokeTested": false,
-      "notes": "No deployment yet."
+      "notes": "Stay n/a (slice 0007): artifact rollback today is 're-reference the previous release' - the previous release stays downloadable and byte-identical (v0.4.0 is the first, so there is no previous); automation is a G6c graduation decision when real consumers exist."
     },
     {
       "id": "G6d",
@@ -262,7 +262,7 @@
       "ports": ["flag.control"],
       "status": "n/a",
       "smokeTested": false,
-      "notes": "No runtime behavior to flag yet."
+      "notes": "Stay n/a (slice 0007): the CLI has no runtime behavior to flag; every command is stateless and gated at merge time."
     },
     {
       "id": "G6e",
@@ -271,7 +271,7 @@
       "ports": ["observe.metrics", "alert.route"],
       "status": "n/a",
       "smokeTested": false,
-      "notes": "No production traffic yet."
+      "notes": "Stay n/a (slice 0007): no production traffic; the only telemetry is the workflow run log itself."
     },
     {
       "id": "G7a",

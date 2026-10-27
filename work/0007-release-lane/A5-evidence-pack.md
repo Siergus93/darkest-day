@@ -36,11 +36,11 @@
 
 | AC | Result | Evidence |
 | --- | --- | --- |
-| AC-1 tag push → observed green run | PENDING | the tag is cut by the OWNER on merged main (A2 constraint); run URL to be appended after `v0.4.0` is pushed |
-| AC-2 asset list = archive + SHA256SUMS | PENDING | observed on the release after the tag; the workflow's pack + upload steps pin the list |
-| AC-3 checksum recompute matches | rehearsed | method verified locally: `Get-FileHash -Algorithm SHA256` of the packed zip vs `SHA256SUMS` line (see probe finding 3 for the repack caveat); to be repeated against the downloaded release asset |
-| AC-4 re-download byte-compare | PENDING | after the release; the workflow prints the commit SHA it built, recorded here with the checksum |
-| AC-5 unpacked artifact runs | PASS (rehearsal) | packed per the workflow list, unpacked to a clean temp dir, run against a consumer-style fixture checkout: `status` → `factory 0.4.0`, `active slice: work/0001-test`, gate catalog, **exit 0**; `check --base HEAD` → `change set: docs/note.md`, `Slice work/0001-test: declared T1, required T1, 1 changed path(s).`, `factory check: PASS, T1`, **exit 0**; failure paths fail loudly (`Cannot read factory.config.json` on a non-factory cwd; `No changed paths were found` on an empty change set; `A4 must declare a tier…` on a malformed plan) |
+| AC-1 tag push → observed green run | PASS | owner pushed tag `v0.4.0` (commit `6a83203` = main HEAD); run **40574701583** green, all 13 steps ✔: https://github.com/Siergus93/darkest-day/actions/runs/40574701583 (workflow log prints `tag: v0.4.0`, `commit: 6a83203ed45e25a91d0496ad924a073429509c18`) |
+| AC-2 asset list = archive + SHA256SUMS | PASS | `gh release view v0.4.0` → exactly 2 assets: `factory-cli-v0.4.0.zip` (20832 bytes) + `SHA256SUMS` (89 bytes); unpacked tree matches the A2 v2 pack list (`dist/cli.js`, `dist/tiers.js`, 10 engine `.mjs` files, `package.json`, `README.md`); no `node_modules`, no git info |
+| AC-3 checksum recompute matches | PASS | downloaded asset recomputed locally: `b16349c7839d4ce6169adbd1a6423bee61006f0780a072a76a01d30ea4a035bb` == `SHA256SUMS` line `b16349c7839d4ce6169adbd1a6423bee61006f0780a072a76a01d30ea4a035bb  factory-cli-v0.4.0.zip` |
+| AC-4 re-download byte-compare | PASS | second independent download hash: `b16349c7839d4ce6…` — byte-identical to the first download and to `SHA256SUMS` |
+| AC-5 unpacked artifact runs | PASS | unpacked the RELEASED asset; run against a consumer-style fixture checkout (own `factory.config.json` + A4 + git): `status` → `factory 0.4.0`, gate catalog, **exit 0**; `check --base HEAD` → `change set: docs/n.md`, `factory check: PASS, T1`, **exit 0** |
 | AC-6 G6a wired only post-observation; G6b–G6e n/a | PASS (form) | `test/config.test.mjs`: the workflow evidence shape is proven on a synthetic fixture ("the workflow evidence shape passes on a matching fixture and fails on drift" ✔); the set-equality test enforces that the G6a table row and the `wired` status land in the same commit; G6b–G6e remain `n/a` |
 | AC-7 v0.4.0 three-way version chain | PASS | `npm test` → 67/67, including "factoryVersion matches the newest released CHANGELOG section and package.json" (0.4.0 == 0.4.0 == [0.4.0]) and "activeSlice names an existing slice directory with an A4 plan" |
 | AC-8 fast lane unaffected, green | PASS | `npm run fast -- --base 4631113` → **Fast lane PASSED in 25.8s**, 12/12 gate rows PASS, 67/67 tests; the fast workflow file is untouched by this diff |
@@ -71,13 +71,17 @@ keeps; the contents list is what this smoke verifies.)
 
 ## Residual risks / notes for the fresh-context verifier
 
-- AC-1..AC-4 are **structurally pending** on the owner's tag push — this is the A2's
-  declared process (owner cuts the release), not a gap. This PR must merge first.
-- The G6a `wired` + `smokeTested: true` flip is a follow-up commit that must include
-  the `WIRED_GATE_EVIDENCE` G6a row; the config test will refuse any other order.
-- The release workflow has never executed; its first run is the v0.4.0 tag. Known
-  sharp edge: `gh release create --verify-tag` requires the tag to be a real repo
-  tag (it is, by trigger); asset upload happens in a second `gh` call, so a failure
-  between create and upload leaves a release without assets — a re-run then fails
-  loudly on the pre-existing release (the immutability guard working, at the cost of
-  manual recovery: delete the empty release and re-tag or re-run).
+- ~~AC-1..AC-4 are structurally pending on the owner's tag push~~ **resolved**: the
+  owner cut `v0.4.0` on merged main; all five observation ACs are now verified above.
+- ~~The G6a `wired` flip is a follow-up commit~~ **resolved**: flipped in this commit
+  together with the `WIRED_GATE_EVIDENCE` row and the G6b–G6e stay-`n/a` reasons.
+- The release workflow executed successfully on its first real run (v0.4.0). The
+  create/upload split between two `gh` calls remains a sharp edge: a failure between
+  them leaves a release without assets, and a re-run fails loudly by design.
+- The zip is not byte-reproducible across builds (archive timestamps); not a defect
+  for the immutability promise. `SOURCE_DATE_EPOCH`-style reproducibility is a
+  recorded follow-up.
+- CI annotations on the v0.4.0 run: Node-20 deprecation warnings for the pinned
+  `actions/checkout`/`actions/setup-node` (they run on Node 24 regardless) and a
+  transient cache save/restore failure — both non-blocking, recorded here for
+  completeness.
