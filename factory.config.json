@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "factoryVersion": "0.4.0",
   "owner": "Siergus",
-  "activeSlice": "work/0008-learning-review",
+  "activeSlice": "work/0009-gate-debt",
   "lanes": {
     "fast": {
       "trigger": "every change",
