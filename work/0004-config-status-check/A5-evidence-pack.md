@@ -145,3 +145,130 @@ files + lane-row labels) and six assertions:
 - `git status` on Windows shows `warning: ... CRLF will be replaced by LF` for files git
   has not re-statted since the attributes file landed; cosmetic, disappears on next touch.
 - FU-2 (SAST literal-argument coverage decision) remains the next slice.
+
+## Fresh-context verification (2026-10-27)
+
+> Adversarial verifier, fresh context, not the diff's author. Every probe below used a
+> different victim than the build-time smokes (A5 build used: G6a flip, `sast.mjs` rename,
+> SAST row removal, `factoryVersion` 0.2.0, `work/0999-nonexistent` pointer). Machine:
+> Windows, `core.autocrlf=true`, Node 24. All commands run in the repo root on branch
+> `work/0004-config-status-check` from a clean tree (`git status --short` empty at start).
+
+### AC verdict table
+
+| AC | Verdict | Evidence |
+| --- | --- | --- |
+| AC-1 wired set ↔ table set equality | **PASS** | Both directions probed with new victims: `G5b` `n/a`→`wired` fails naming G5b (probe 1); `G4e` `wired`→`manual` fails naming G4e as a stale table entry (probe 2) |
+| AC-2 flip a gate to `wired` fails naming the gate | **PASS** | Probe 1 (G5b, not G6a): exit 1, "Gates declared \"wired\" without wiring evidence in this table: G5b"; restore green 8/8 |
+| AC-3 rename a declared wrapper fails naming gate + path | **PASS** | Probe 3 (`scripts/ci/secrets-history.mjs`→`.bak`, not `sast.mjs`): exit 1, "Wired gates with missing wrappers: G4d: scripts/ci/secrets-history.mjs"; restore green, `git status` clean |
+| AC-4 remove a lane row fails naming gate + label | **PASS** | Probe 4 (`record("HISTORY"`→`record("XISTORY"` in `fast.mjs`, not the SAST row): exit 1, "Wired gates with missing lane rows: G4d: lane row \"HISTORY\""; `git checkout -- scripts/ci/fast.mjs` restores green |
+| AC-5 drift / pointer failures | **PASS, with a design hole** | Probe 5: status `"Wired"` (capital W) fails twice — vocabulary test + stale-table test — naming G4e, exit 1. Probe 6: `activeSlice` → `work/0002-vcs-faithful-diff` (a real dir with an A4) **passes** — see finding FU-3 |
+| AC-6 clean tree green, check < 1 s | **PASS** | `npm test` → 55/55, exit 0; the 6 new tests each ran in ~0.5–3 ms in `node --test test/config.test.mjs` (suite of 8 well under 1 s) |
+| AC-7 `npm run fast -- --base b92ad65` green | **PASS** | Reproduced independently: all 13 gate rows PASS (CONFIG, G4a, FORMAT, LINT, SAST, G4b, G4c 55/55, LINKS, G4d, HISTORY, G4e, G4f "declared T2, required T2, 10 changed path(s)"), "Fast lane PASSED in 15.2s", exit 0 |
+| AC-8 `.gitattributes`, renormalize no-op, fresh checkout LF | **PASS** | `.gitattributes` contains `* text=auto eol=lf`; `git add --renormalize .` staged nothing (no-op); `Remove-Item test/config.test.mjs; git checkout -- test/config.test.mjs` → byte scan: `contains CR (0x0D): False`, on `core.autocrlf=true` |
+| AC-9 CI on the PR exits 0 | **PASS** | `gh pr checks 5` → `fast lane  pass  15s` (run 40474300726/job 122088606841), exit 0 |
+
+### Probe log (verbatim commands and exit codes)
+
+```
+npm test                                                        EXIT=0  (55/55)
+npm run fast -- --base b92ad65                                  EXIT=0  (all gates PASS)
+
+P1  edit factory.config.json: G5b "n/a" -> "wired"
+    node --test test/config.test.mjs                            EXIT=1
+      Gates declared "wired" without wiring evidence in this table: G5b
+    git checkout -- factory.config.json; re-test                EXIT=0  (8/8)
+
+P2  edit factory.config.json: G4e "wired" -> "manual"
+    node --test test/config.test.mjs                            EXIT=1
+      Wiring evidence for gates that are not declared "wired" (stale table entries): G4e
+    git checkout -- factory.config.json; re-test                EXIT=0  (8/8)
+
+P3  Rename-Item scripts/ci/secrets-history.mjs secrets-history.mjs.bak
+    node --test test/config.test.mjs                            EXIT=1
+      Wired gates with missing wrappers: G4d: scripts/ci/secrets-history.mjs
+    rename back; re-test; git status scripts/ci/                EXIT=0  (8/8, clean)
+
+P4  replace record("HISTORY" -> record("XISTORY" in scripts/ci/fast.mjs
+    node --test test/config.test.mjs                            EXIT=1
+      Wired gates with missing lane rows: G4d: lane row "HISTORY"
+    git checkout -- scripts/ci/fast.mjs; re-test                EXIT=0  (8/8)
+
+P5  edit factory.config.json: G4e status -> "Wired" (capital W)
+    node --test test/config.test.mjs                            EXIT=1 (2 failures)
+      Unknown gate status values (known: manual, wired, partial, n/a): G4e: "Wired"
+      Wiring evidence for gates that are not declared "wired" (stale table entries): G4e
+    git checkout -- factory.config.json; re-test                EXIT=0  (8/8)
+
+P6  edit factory.config.json: activeSlice -> work/0002-vcs-faithful-diff (real dir + A4)
+    node --test test/config.test.mjs                            EXIT=0  (passes — hole, FU-3)
+    git checkout -- factory.config.json
+
+C1  Rename-Item scripts/ci/lib/format-lint.mjs format-lint.mjs.bak
+    npm run fast -- --base b92ad65                              EXIT=1
+      Error [ERR_MODULE_NOT_FOUND]: Cannot find module ...lib\format-lint.mjs
+      imported from ...scripts\ci\fast.mjs   (lane fails closed, no silent pass)
+    rename back
+    (also: test/gates.test.mjs imports ../scripts/ci/lib/format-lint.mjs directly,
+     so npm test would crash loudly in the same state — the lib is behaviorally pinned)
+
+C2  add fake gate { "id": "G9z", "tier": "T1", "status": "wired" } to factory.config.json
+    node --test test/config.test.mjs                            EXIT=1
+      Gates declared "wired" without wiring evidence in this table: G9z
+    node -e "loadConfig(repoRoot)"                              accepted G9z: true
+      (loader has no enum check, as claimed — enforcement is test-side; fine, but see FU-4)
+    git checkout -- factory.config.json
+
+C3  git add --renormalize .                                     EXIT=0, nothing staged (no-op)
+    Remove-Item test/config.test.mjs; git checkout -- test/config.test.mjs
+    byte scan                                                    contains CR (0x0D): False
+    git config core.autocrlf                                    true
+
+C4  gh pr diff 5 --name-only                                    EXIT=0
+    .gitattributes, AGENTS.md, CHANGELOG.md, factory.config.json, test/config.test.mjs,
+    work/0004-config-status-check/{A1,A2,A4,A5}.md, work/README.md
+    → all inside the A4 v2 declared radius (test/**, work/0004-config-status-check/**,
+    .gitattributes, factory.config.json, AGENTS.md, CHANGELOG.md, work/README.md).
+    No out-of-radius file. No scripts/ci/**, .github/**, adapters/** source changes.
+
+C5  gh pr checks 5                                              EXIT=0  (fast lane pass, 15s)
+```
+
+### Findings
+
+None that fail an AC. Three follow-ups registered:
+
+- **FU-3 (accepted residual)** — `activeSlice` pointing at a *wrong-but-existing* slice
+  (probe 6) passes the assertion: the test checks structure (dir + A4 exist), and no
+  machine can know which slice is "current" without another source of truth. Partially
+  mitigated in practice: the G4f lane summary names the slice every run ("Slice
+  work/0004-config-status-check: declared T2, required T2"), so the mismatch is visible
+  at lane time. This is within A2's declared scope (the AC promises
+  "a directory without an A4 fails"), so PASS with the hole recorded. Candidate hardening:
+  cross-check `activeSlice` against the CHANGELOG's current-slice mention or the newest
+  `work/` row in `work/README.md`.
+- **FU-4 (thin pin, fails closed today)** — "wrapper exists + row present" does not prove
+  the lane executes that wrapper: the lane imports `scripts/ci/lib/*.mjs`, never the
+  wrapper entry scripts. Evidence the ecosystem still fails closed: renaming
+  `scripts/ci/lib/format-lint.mjs` crashes the lane at import (exit 1, probe C1), and
+  `test/gates.test.mjs` behaviorally imports the same lib, so `npm test` fails too. A
+  future edit that points a table entry at a wrapper nothing imports would still pass
+  both checks. Candidate hardening: pin the lib modules the lane actually imports (or
+  assert each wrapper is reachable from `fast.mjs`'s import graph). Also noted: the
+  status enum lives only in the test; `loadConfig` accepts `"Wired"`/`"G9z"`-style
+  entries (probe C2) — acceptable since the test is the declared enforcement point.
+- **FU-5 (version coherence gap, outside radius)** — `package.json` still says
+  `0.2.0` while `factoryVersion`/`CHANGELOG.md` say `0.3.0` (visible in every npm banner
+  above: `darkest-day-factory@0.2.0`). The release-cut AC promised only
+  `factoryVersion` ↔ CHANGELOG, and `package.json` is outside the declared blast radius,
+  so this is not an AC failure — but the repo now has two version authorities that can
+  drift. Decision needed: sync `package.json` in the release cut or record it as
+  intentionally independent (and optionally pin it in `test/config.test.mjs`).
+
+### Verdict
+
+All nine ACs reproduced green with fresh victims; every adversarial probe failed closed
+exactly as the spec promised; the PR diff is inside the declared blast radius; CI passes.
+The residual holes (FU-3/4/5) are scope gaps the A2/A4 did not promise to close.
+
+VERDICT: PASS — every AC reproduced and every adversarial probe failed closed as designed; residual holes are registered as follow-ups, not AC failures.
