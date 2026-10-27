@@ -9,7 +9,7 @@
 | Spec | [A2](A2-spec.md) v1 · Roadmap: [docs/backlog.md](../../docs/backlog.md) |
 | Tier | T2 |
 | Tier downgrade reason | n/a |
-| Version | 1 |
+| Version | 2 |
 | Owner | Siergus |
 | Target release | Factory v0.3.2 (unreleased) |
 
@@ -24,7 +24,7 @@ rides with the pointer move.
 
 | Surface | Touched | Notes |
 | --- | --- | --- |
-| Paths / modules | `src/**` (new cli.ts entry + ambient declarations for the shared engines), `test/**` (new cli test), `tsconfig.json` (only if the entry compilation requires it — expected not), `factory.config.json` (release cut: `factoryVersion` 0.3.2, `activeSlice` → this slice), `package.json` + `package-lock.json` (version field only, no new dependency), `CHANGELOG.md` (release cut), `AGENTS.md` (active-slice line), `work/README.md` (0005/0006 rows), `docs/backlog.md` (row update), `work/0006-factory-cli/**` | `factory.config.json` is protected → T2. No `scripts/ci/**` logic moves; a thin ambient `.d.ts` bridge may be needed inside `src/**` only. No `.github/**` or `adapters/**`. |
+| Paths / modules | `src/**` (new cli.ts entry + ambient declarations for the shared engines), `test/**` (new cli test), `tsconfig.json` (only if the entry compilation requires it — expected not), `factory.config.json` (release cut: `factoryVersion` 0.3.2, `activeSlice` → this slice), `package.json` + `package-lock.json` (version field only, no new dependency), `CHANGELOG.md` (release cut), `AGENTS.md` (active-slice line), `work/README.md` (0005/0006/0007 rows), `docs/backlog.md` (row update), `work/0006-factory-cli/**`, `work/0007-release-lane/**` (v2: the roadmap commit landed the next slice's docs-only drafts A1/A2/A4 on this branch; declared so G4f can see them) | `factory.config.json` is protected → T2. No `scripts/ci/**` logic moves; a thin ambient `.d.ts` bridge may be needed inside `src/**` only. No `.github/**` or `adapters/**`. |
 | Public contracts | none yet | The CLI has no published contract while undeployed; its manifest/output shape is fixed by A2 ACs 1–6 as de facto stability promise, not yet contract gate (G5b stays n/a). |
 | Data / schema | none | — |
 | Configuration / secrets | `factory.config.json` values (`factoryVersion`, `activeSlice`) | Declared; no secrets. |

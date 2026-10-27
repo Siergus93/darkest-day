@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "factoryVersion": "0.3.1",
+  "factoryVersion": "0.3.2",
   "owner": "Siergus",
-  "activeSlice": "work/0005-sast-literal-coverage",
+  "activeSlice": "work/0006-factory-cli",
   "lanes": {
     "fast": {
       "trigger": "every change",

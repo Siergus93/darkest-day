@@ -25,6 +25,6 @@
 
 | Slice | Item | Tier | State |
 | --- | --- | --- | --- |
-| [0006](../work/0006-factory-cli/) | First product: the factory CLI (`factory status` / `factory check`) — the loop already exists for specs/implementation/review/testing; this proves it on product code | T2 (release cut rides) | Drafted |
+| [0006](../work/0006-factory-cli/) | First product: the factory CLI (`factory status` / `factory check`) — the loop already exists for specs/implementation/review/testing; this proves it on product code | T2 (release cut rides) | Active |
 | [0007](../work/0007-release-lane/) | Deployment lane: G6a `artifact.immutable` skeleton — tag → checksummed artifact → GitHub Release; the first droppable product artifact | T2 | Drafted |
 
