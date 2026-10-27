@@ -19,9 +19,10 @@
 | AC-4 pointer + version chain | PASS | `activeSlice: work/0008-learning-review` (A4 exists); config test "factoryVersion matches…" ✔ unchanged — 0.4.0 == 0.4.0 == [0.4.0]; no release cut rides (deliberate, declared in A4) |
 | AC-5 lane green, release lane untouched | PASS | `npm run fast -- --base f752cb1` → Fast lane PASSED, 12/12 gate rows, 70/70 tests; `.github/workflows/release.yml` untouched by this diff |
 
-## Fresh-context verification: pending — verifier runs before merge
+## Fresh-context verification: verified — independent session, 2026-10-27
 
-This slice's own fresh-context record is intentionally the first user of the field it
-introduces. The verifier should confirm at minimum: the A8's verdict data (rework
-count, lead times, escaped-defect attribution) matches the PR history, and the
-config test actually fails when the field is removed from this A5.
+The verifier ran in a different session and recorded corrections directly on this
+branch (commit `b65254d`: the build-out span is three days, 2026-10-25 → 2026-10-27,
+and the probe-count wording in the A8 was fixed). The fact-check pass confirms the
+A8's rework count, lead times, and escaped-defect attribution. This record is the
+first verdict to satisfy the field this slice introduces.
