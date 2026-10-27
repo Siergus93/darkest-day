@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "factoryVersion": "0.4.0",
   "owner": "Siergus",
-  "activeSlice": "work/0007-release-lane",
+  "activeSlice": "work/0008-learning-review",
   "lanes": {
     "fast": {
       "trigger": "every change",

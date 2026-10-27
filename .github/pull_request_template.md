@@ -11,6 +11,7 @@
 
 - Evidence pack (A5):
 - Fast lane command and exit code:
+- Fresh-context verification: <verifier context/model> · <A5 section link> — or "pending: verifier runs before merge"
 - Deviations from A4 (declare before they happen):
 - Residual risk / waivers:
 
