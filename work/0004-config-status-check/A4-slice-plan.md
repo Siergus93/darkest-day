@@ -9,7 +9,7 @@
 | Spec | [A2](A2-spec.md) v1; origin FU-1 in [0003 A4 v4](../0003-fast-gate-debt/A4-slice-plan.md) |
 | Tier | T2 |
 | Tier downgrade reason | n/a |
-| Version | 1 |
+| Version | 2 |
 | Owner | Siergus |
 | Target release | Factory v0.3.1 (unreleased) |
 
@@ -24,7 +24,7 @@ cut lands (CHANGELOG, `factoryVersion`, `activeSlice` → this slice, AGENTS.md 
 
 | Surface | Touched | Notes |
 | --- | --- | --- |
-| Paths / modules | `test/**` (config.test.mjs: expectations table + assertions), `work/0004-config-status-check/**`, `factory.config.json` (release cut: `factoryVersion` 0.3.0, `activeSlice` pointer), `AGENTS.md` (current-state sync), `CHANGELOG.md` (release cut + new `[Unreleased]`), `work/README.md` (0003/0004 rows) | `factory.config.json` is protected → T2. The release cut rides here because the `activeSlice` pointer must name a slice whose A4 exists. No `scripts/ci/**`, `.github/**`, or `adapters/**` source changes; break-and-restore smokes temporarily edit `scripts/ci/sast.mjs`/`fast.mjs` in the working tree and restore before commit. |
+| Paths / modules | `test/**` (config.test.mjs: expectations table + assertions), `work/0004-config-status-check/**`, `.gitattributes` (new root file: `* text=auto eol=lf`), `factory.config.json` (release cut: `factoryVersion` 0.3.0, `activeSlice` pointer), `AGENTS.md` (current-state sync), `CHANGELOG.md` (release cut + new `[Unreleased]`), `work/README.md` (0003/0004 rows) | v2 adds `.gitattributes` (owner decision 2026-10-27): the drafting agent's lane run hit the Windows CRLF checkout defect — `core.autocrlf=true` with no attributes file materializes CRLF working trees the FORMAT gate rejects; the drift class is what this slice exists to prevent. `factory.config.json` is protected → T2. The release cut rides here because the `activeSlice` pointer must name a slice whose A4 exists. No `scripts/ci/**`, `.github/**`, or `adapters/**` source changes; break-and-restore smokes temporarily edit `scripts/ci/sast.mjs`/`fast.mjs` in the working tree and restore before commit. |
 | Public contracts | none | Test-only additions; config fields change value, not shape. |
 | Data / schema | none | — |
 | Configuration / secrets | `factory.config.json` values only (`factoryVersion`, `activeSlice`) | Declared above; no secrets. |
@@ -47,10 +47,13 @@ pointer is honest before the enforcement that reads it.
    `[Unreleased]`; `factoryVersion` → `0.3.0`; `activeSlice` →
    `work/0004-config-status-check`; AGENTS.md current-state + boundaries lines sync;
    `work/README.md` rows for 0003 (S5, merged via PR #4) and 0004.
-2. Write the expectations table and assertions AC-1…AC-5 in `test/config.test.mjs`
+2. Pin line endings: add `.gitattributes` (`* text=auto eol=lf`), run `git add --renormalize .`
+   (must be a no-op — the index is already LF), and prove a fresh checkout materializes LF
+   even on `core.autocrlf=true` (delete a tracked file, `git checkout --` it, read bytes).
+3. Write the expectations table and assertions AC-1…AC-5 in `test/config.test.mjs`
    (set equality, status enum, wrapper existence, lane-row presence, version coherence).
-3. Break-and-restore smokes for AC-2/AC-3/AC-4/AC-5; record every output verbatim in A5.
-4. Full lane run `npm run fast -- --base b92ad65` (the 0003 merge commit); PR.
+4. Break-and-restore smokes for AC-2/AC-3/AC-4/AC-5; record every output verbatim in A5.
+5. Full lane run `npm run fast -- --base b92ad65` (the 0003 merge commit); PR.
 
 ## Verification plan
 
@@ -63,7 +66,8 @@ pointer is honest before the enforcement that reads it.
 | AC-5 | `factoryVersion`/CHANGELOG drift and pointer-without-A4 each fail; restore green | isolated | Local | A5 smoke 4 |
 | AC-6 | Clean tree `npm test` green, added check < 1 s | isolated (timed) | Local + CI | A5 timing |
 | AC-7 | `npm run fast -- --base b92ad65` green | command | Local | A5 lane run |
-| AC-8 | CI on the PR exits 0 | manual → observed | GitHub Actions | Run URL in A5 |
+| AC-8 | `.gitattributes` present; renormalize no-op; fresh checkout of a tracked file is LF on `core.autocrlf=true` | isolated + command | Local | A5 smoke 5 |
+| AC-9 | CI on the PR exits 0 | manual → observed | GitHub Actions | Run URL in A5 |
 
 ## Risks and ordering rationale
 

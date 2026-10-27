@@ -1,7 +1,11 @@
 # Spec (A2)
 
 > Station S1 · Gate G1 · Each acceptance criterion is observable and has a tier of test.
-> Version 1 · Owner Siergus · 2026-10-27
+> Version 2 · Owner Siergus · 2026-10-27
+>
+> v2 adds AC-8 after the drafting agent's lane run hit the Windows CRLF checkout defect
+> (fresh checkouts on `core.autocrlf=true` machines break the FORMAT gate). Decision by the
+> owner, 2026-10-27: fix inside this slice — the drift class is what the slice is about.
 
 ## Problem being solved
 
@@ -42,6 +46,7 @@ The release cut (this slice's step 1) is what assertion 5 exists to guard.
 | AC-5 | A `factoryVersion`/`CHANGELOG` mismatch and an `activeSlice` pointing at a directory without an A4 each fail `npm test` with a specific message; restore passes | isolated (break-and-restore on scratch copies or the working tree) |
 | AC-6 | Clean tree: `npm test` green with the added check running under 1 s | isolated (timed) |
 | AC-7 | `npm run fast -- --base <pre-slice sha>` green after the release cut and the check land | command |
+| AC-8 | `.gitattributes` (`* text=auto eol=lf`) exists; `git add --renormalize .` is a no-op; a fresh checkout of a tracked text file is LF on disk on a `core.autocrlf=true` machine | isolated + command (break-and-restore checkout smoke) |
 
 ## Non-criteria
 

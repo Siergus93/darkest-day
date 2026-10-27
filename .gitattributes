@@ -1,0 +1,4 @@
+# The formatter (Biome) writes LF, so every checkout must be byte-identical on every
+# platform. Without this file, Windows machines with core.autocrlf=true materialize
+# CRLF working trees that the FORMAT gate rejects (observed 2026-10-27, slice 0004).
+* text=auto eol=lf
