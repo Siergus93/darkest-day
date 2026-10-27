@@ -27,7 +27,7 @@
 
 ## What happened
 
-Seven slices in four days (2026-10-24 → 2026-10-27), ten PRs, zero rollbacks. Lead time
+Seven slices in three days (2026-10-25 → 2026-10-27), ten PRs, zero rollbacks. Lead time
 per slice (first commit → merged) stayed under one day throughout (T1 target: ≤ 3 days);
 the slowest was 0005, whose ~10-hour gap between PR #6 and reworked PR #7 was the
 fresh-context verification doing its job, not waiting. WIP never exceeded 1 open slice.
@@ -41,8 +41,9 @@ spec → plan → build → verify → release path as the gates themselves.
   slice 0005's fresh-context check failed the shipped work over a scope note that
   over-claimed coverage. The cost was one fix round; the alternative was a SAST gate
   that passively lied about its coverage.
-- **Probes kept paying disproportionate dividends.** Three slices in a row (0006, 0007),
-  a first-hour probe found the design assumption that would have failed latest: the
+- **Probes kept paying disproportionate dividends.** Three probes in a row (slices
+  0006, 0007), each a first-hour probe that found the design assumption that would
+  have failed latest: the
   compiled-TS bridge specifier bug (0006), the non-self-contained artifact pack (0007),
   and a blast-radius glob that never matched its own slice directory (0007). Each was
   fixed before any tag, PR review, or consumer could see it.
