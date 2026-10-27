@@ -6,6 +6,12 @@ The factory is a product: it has a version, and material changes are recorded he
 
 ### Added
 
+- Slice 0005 prepared (S3): A1/A2/A4 for the SAST literal-argument coverage decision
+  (FU-2) — probe-first, decide widen-vs-boundary, record in an ADR-0004 amendment;
+  the v0.3.1 release cut rides with it and closes FU-5 (`package.json` joins the
+  version-coherence chain).
+- Nice-to-have follow-up register at [`docs/backlog.md`](docs/backlog.md)
+  (FU-3, FU-4 parked with mitigations stated).
 - Slice 0004 — automated config-status check: `test/config.test.mjs` pins every
   `status: "wired"` gate in `factory.config.json` to its wrapper files and lane rows
   (both directions), enforces the status vocabulary, and checks `factoryVersion`

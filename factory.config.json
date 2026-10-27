@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "factoryVersion": "0.3.0",
   "owner": "Siergus",
-  "activeSlice": "work/0004-config-status-check",
+  "activeSlice": "work/0005-sast-literal-coverage",
   "lanes": {
     "fast": {
       "trigger": "every change",
