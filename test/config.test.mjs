@@ -41,6 +41,11 @@ const WIRED_GATE_EVIDENCE = {
     },
   },
   G4e: { wrappers: [], rows: ["G4e"], wrapperLibs: {} },
+  // Note (fresh-context N3, slice 0009): scripts/ci/links.mjs is NOT a G4e
+  // wrapper — it implements the docs.link port, which belongs to G0 (manual).
+  // G4e's audit logic (deps.inventory / deps.vuln) runs inline in fast.mjs via
+  // runNpm, which is why it has no wrapper file of its own; its libs are pinned
+  // through LANE_LIBS below.
   G4f: {
     wrappers: ["scripts/ci/blast-radius.mjs"],
     rows: ["G4f"],
@@ -251,6 +256,47 @@ test("every lane row a wired gate declares appears in the fast lane", () => {
 });
 
 /**
+ * Whether the wrapper source IMPORTS the lib — not merely mentions it.
+ * (Fresh-context finding B1, slice 0009: a substring check false-passed a
+ * rewired wrapper whose stale comment still named the old specifier.)
+ * Conservative comment stripping: drop `//` line comments that are not part
+ * of a URL (`://`); the wrappers' specifiers then must appear inside a
+ * `from "…"` / `import("…")` clause.
+ */
+function wrapperImportsLib(source, lib) {
+  const withoutComments = source
+    .split(/\r?\n/)
+    .map((line) => {
+      const marker = line.indexOf("//");
+      if (marker === -1 || line.slice(0, marker).includes("://")) {
+        return line;
+      }
+      return line.slice(0, marker);
+    })
+    .join("\n");
+  // Check both static `from "<...lib/x.mjs>"` and dynamic `import("<...lib/x.mjs>")`.
+  for (const clause of ['from "', 'import("', "import ('"]) {
+    let index = withoutComments.indexOf(clause);
+    while (index !== -1) {
+      const start = index + clause.length;
+      const end = withoutComments.indexOf(quoteChar(clause), start);
+      if (end !== -1) {
+        const specifier = withoutComments.slice(start, end);
+        if (specifier === `./${lib}` || specifier.endsWith(`/${lib}`) || specifier === lib) {
+          return true;
+        }
+      }
+      index = withoutComments.indexOf(clause, index + 1);
+    }
+  }
+  return false;
+}
+
+function quoteChar(clause) {
+  return clause.endsWith('"') ? '"' : "'";
+}
+
+/**
  * FU-4 (slice 0009): the declared wrapper→lib links, checked against the
  * wrapper sources. Returns findings naming the gate, wrapper, and module.
  */
@@ -277,7 +323,7 @@ function missingLibEvidence(root, entries, laneLibs = {}) {
     for (const lib of libs) {
       if (!existsSync(path.join(root, "scripts/ci", lib))) {
         findings.push(`${gateId}: ${wrapper} declares missing lib "${lib}"`);
-      } else if (!source.includes(lib)) {
+      } else if (!wrapperImportsLib(source, lib)) {
         findings.push(
           `${gateId}: ${wrapper} no longer imports its declared lib "${lib}" — ` +
             "rewire the evidence table or restore the import",
@@ -316,6 +362,14 @@ test("the lib-link check fails when a wrapper stops importing a declared lib (sy
   // The FU-4 gap: the wrapper is REWIRED away from the declared lib (which still
   // exists), so existence checks alone cannot catch it — the import check must.
   write(root, "scripts/ci/wrapped.mjs", "export const rewired = true;\n");
+  // Fresh-context finding B1 (slice 0009): a stale COMMENT mentioning the old
+  // specifier must not false-pass the check — comments are stripped.
+  write(
+    root,
+    "scripts/ci/wrapped.mjs",
+    'import { ok2 } from "./lib/other.mjs";\n// migrated away from ./lib/engine.mjs\nok2;\n',
+  );
+  write(root, "scripts/ci/lib/other.mjs", "export const ok2 = 2;\n");
   assert.deepEqual(
     missingLibEvidence(root, {
       G4x: {
@@ -327,7 +381,7 @@ test("the lib-link check fails when a wrapper stops importing a declared lib (sy
     [
       'G4x: scripts/ci/wrapped.mjs no longer imports its declared lib "lib/engine.mjs" — rewire the evidence table or restore the import',
     ],
-    "a rewired wrapper must be named",
+    "a rewired wrapper must be named, even when a comment still mentions the old specifier",
   );
 });
 

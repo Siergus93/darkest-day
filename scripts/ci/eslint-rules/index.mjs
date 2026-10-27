@@ -22,11 +22,24 @@
 //     or the same reached through an identifier alias chain
 //     (`const r = require; const c = r("child_process")` — bounded, cycle-safe).
 //
-// Accepted edge (FU-8, slice 0009): a member key or module specifier computed
-// from runtime values (`cp[key]`, specifier built from input) is not coverable
-// by ANY AST rule and is not attempted — the class is close to
-// admission-resistant already, and no false positives on sanctioned code are
-// worth chasing it.
+// Accepted edges (FU-8, slice 0009, refined after the fresh-context FAIL round):
+//   - a member key or module specifier computed from runtime values (`cp[key]`,
+//     specifier built from input) — not coverable by ANY AST rule;
+//   - a const-bound key or specifier (`const K = "exec"; cp[K](…)`,
+//     `const M = "node:child_process"; await import(M)`) — resolvable in
+//     principle, left to the accepted-edge class to keep the resolver simple;
+//   - empty-interpolation templates (`cp[ex${""}ec]`) and destructures from the
+//     module object (`const { exec } = cp`) — pre-existing static escapes,
+//     recorded here rather than silently omitted;
+//   - a require function bound to a name other than `require`
+//     (`const rq = module.createRequire(…)`) — only a chain ending at the name
+//     `require` is followed.
+//
+// Over-approximation, also by decision (ADR-0004's unconditional ban): a folded
+// or plain exec-family member is flagged on ANY receiver object
+// (`re["ex" + "ec"](…)`, `runner.exec(…)`), so a false positive is possible on
+// non-child_process objects by design — the sanctioned spawn pattern is the
+// declared escape from this rule.
 //
 // `security/detect-child-process` stays in the pack as an independent second opinion
 // over static import declarations and `require()` for non-literal first arguments.
@@ -138,11 +151,13 @@ function staticModuleSource(init) {
 
 /**
  * Whether an identifier's binding chain (`const r = require; const c = r; …`)
- * bottoms out at a binding named `require` — bounded and cycle-safe (FU-8).
- * Returns true / false / null (unresolvable), where null is treated as false
- * by callers but distinguishes "chain exhausted" for future callers.
+ * bottoms out at a binding named `require` — bounded at 5 hops (A2 design 3)
+ * and cycle-safe via the seen-set (FU-8, multi-hop rebinding). A deeper chain
+ * degrades to the accepted-edge class (unresolvable → clean).
  */
-function chainReachesRequire(context, identifier, seen) {
+const MAX_ALIAS_HOPS = 5;
+
+function chainReachesRequire(context, identifier, seen, depth = 0) {
   if (identifier?.type !== "Identifier") {
     return false;
   }
@@ -154,6 +169,9 @@ function chainReachesRequire(context, identifier, seen) {
   if (name === "require") {
     return true;
   }
+  if (depth >= MAX_ALIAS_HOPS) {
+    return false;
+  }
   const sourceCode = context.sourceCode || context.getSourceCode();
   const startingScope = sourceCode.getScope ? sourceCode.getScope(identifier) : context.getScope();
   for (let scope = startingScope; scope !== null; scope = scope.upper) {
@@ -163,7 +181,7 @@ function chainReachesRequire(context, identifier, seen) {
       }
       for (const def of variable.defs) {
         if (def.type === "Variable" && def.node?.init?.type === "Identifier") {
-          return chainReachesRequire(context, def.node.init, seen);
+          return chainReachesRequire(context, def.node.init, seen, depth + 1);
         }
       }
     }

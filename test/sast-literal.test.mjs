@@ -145,6 +145,22 @@ const cases = [
     'import { createRequire } from "node:module";\nconst require = createRequire(import.meta.url);\nconst r = require;\nconst { spawnSync } = r("node:child_process");\nspawnSync("git", ["status"]);',
     [],
   ],
+  // Documented accepted edges + over-approximation (fresh-context round 1, N1/N5).
+  [
+    "const-bound member key stays clean (accepted edge, N1)",
+    'import cp from "node:child_process";\nconst K = "exec";\ncp[K]("ls");',
+    [],
+  ],
+  [
+    "empty-interpolation template key stays clean (accepted edge, N1)",
+    'import cp from "node:child_process";\ncp[`ex${""}ec`]("ls");',
+    [],
+  ],
+  [
+    "folded exec key on a NON-child_process object is flagged by design (over-approximation, N5)",
+    'const runner = { exec: (cmd) => cmd };\nrunner["ex" + "ec"]("build");',
+    ["factory/literal-command-exec"],
+  ],
 ];
 
 test("the ADR-0004 coverage holds: every exec-family shape is rejected, sanctioned usage passes", async () => {
