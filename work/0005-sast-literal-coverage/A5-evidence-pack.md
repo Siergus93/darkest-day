@@ -286,7 +286,7 @@ literal string property. Re-verified independently below.
 | --- | --- | --- | --- |
 | V7 exactly | `const { exec } = await import("node:child_process"); exec("rm -rf /")` | EXIT=0 (hole) | **EXIT=1**, rule id + file:line |
 | Aliased dynamic import | `const { exec: e } = await import(...); e("rm -rf /")` | untested in v1 | **EXIT=1** |
-| Computed member | `import cp from ...; cp["exec"]("x")` | EXIT=0 (hole) | **EXIT=1** |
+| Computed member | `import cp from ...; cp["exec"] ("x")` | EXIT=0 (hole) | **EXIT=1** |
 | Non-exec family, dynamic arg | `const f = process.argv[2]; execFile(f, ["--x"])` | EXIT=0 (hole) | **EXIT=1** (`child_process.execFile()`) |
 | Static binary concat | `exec("node --ver" + "sion")` | EXIT=0 (documented edge) | **EXIT=1** (closed) |
 | Green control | clean tree | scope note over-claimed | EXIT=0; note now says only what is true: "banned unconditionally; spawn/spawnSync with an argument array is the sanctioned pattern; detection of non-literal exec() on static imports remains with security/detect-child-process as a second opinion" — matches the plugin source (exec-only fnName), no over-claim |
@@ -366,7 +366,8 @@ both are exec-class hazards carried across the sanctioned boundary; the current 
    incomplete — dynamic-property member access (N3) re-opens it by a *member* edge and is not
    in the Known-edges list; N1/N2/N5/V6' are static but unresolved. Add one Known-edges
    bullet naming the dynamic-property edge and referencing FU-8/FU-9 at the next ADR touch.
-4. Gate artifact: the Fix-round prose `cp["exec"](...)` was parsed as a Markdown reference
+4. Gate artifact: the Fix-round prose (and my first-pass probe table) `cp["exec"] (...)` was
+   parsed as a Markdown reference
    link and failed LINKS on CI (run 40483722905); reworded in this commit (`cp["exec"] (…)`),
    LINKS PASS, lane re-run green. Inline-code spans are otherwise linted-looking code — the
    checker excludes fenced blocks only, which is why the earlier inline code tripped it.
